@@ -4,6 +4,8 @@ SNSampler : AbstractSNSampler {
 	var <name, <recorder, <buffers, <loopLengths, usedBuffers, <>doneAction;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime;
 	var <>randomBufferSelect = false;
+	var <>inBus;
+	var controllerKeys;
 
 	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, server, oscFeedbackAddress|
 		^super.newCopyArgs(
@@ -15,12 +17,14 @@ SNSampler : AbstractSNSampler {
 	}
 
 	init { |argName, oscFeedbackAddress|
-		all ? all = ();
+		all ?? { all = () };
+		controllerKeys = [];
 		name = argName.asSymbol;
 		if (all.includesKey(name)) {
 			Error("A looper under the name '%' already exists".format(name)).throw;
 		};
 		all = all.put(name.asSymbol, this);
+		loopLengths = bufLength ! numBuffers;
 		oscFeedbackAddr !? {
 			if (oscFeedbackAddr.class !== NetAddr) {
 				Error("If supplied, oscFeedbackAddr must be a NetAddr. Given: %\n".format(oscFeedbackAddr));
@@ -30,17 +34,28 @@ SNSampler : AbstractSNSampler {
 		};
 	}
 
-	initSampler {
+	setupSampler { |in=0|
 		server.waitForBoot {
-			var in;
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, numChannels);
 			loopLengths = bufLength ! numBuffers;
 			usedBuffers = false ! numBuffers;
 			server.sync;
 			recorder = NodeProxy.audio(server, numChannels).pause;
-			if (numChannels < 2) { in = 0 } { in = 0!numChannels };
+			if (numChannels < 2) { inBus = in } { inBus = in ! numChannels };
 			recorder[0] = {
-				var soundIn = SoundIn.ar(\in.kr(in)).scope("looper in");
+				var soundIn = SoundIn.ar(\in.kr(inBus));
+				soundIn = XFade2.ar(
+					soundIn,
+					Compander.ar(
+						soundIn, soundIn,
+						\compThresh.kr(0.5),
+						\slopeBelow.kr(1.0),
+						\slopeAbove.kr(0.5),
+						\clampTime.kr(0.01),
+						\relaxTime.kr(0.01)
+					),
+					\compress.kr(0)
+				).scope("looper in");
 				BufWr.ar(
 					soundIn,
 					\bufnum.kr(0),
@@ -51,7 +66,7 @@ SNSampler : AbstractSNSampler {
 						BufFrames.kr(\bufnum.kr(0))
 					)
 				);
-				soundIn * \bypassAmp.kr(1);
+				soundIn * \bypassAmp.kr(0);
 			};
 
 			this.prCreateWidgets;
@@ -82,7 +97,6 @@ SNSampler : AbstractSNSampler {
 					if (usedBuffers.select { |bool| bool == true }.size == numBuffers) {
 						usedBuffers = false ! numBuffers;
 					};
-					// usedBuffers.postln;
 					length = offTime - onTime;
 					"stop sampling, buffer length: %\n".postf(length);
 					if (length > bufLength) {
@@ -108,11 +122,28 @@ SNSampler : AbstractSNSampler {
 	}
 
 	sample { |bool|
-		samplingModel.value_(bool).changed(\value)
+		if (controllerKeys.includes(\value).not) {
+			controllerKeys = controllerKeys.add(\value)
+		};
+		samplingModel.value_(bool).changedKeys(controllerKeys)
+	}
+
+	setSamplingDoneAction { |func|
+		if (controllerKeys.includes(\done).not) {
+			controllerKeys = controllerKeys.add(\done)
+		};
+		samplingController.put(\done, { |changer, what|
+			func.value(changer, what);
+		})
 	}
 
 	resetBuffers {
 		buffers.do(_.zero);
+		loopLengths = bufLength ! numBuffers;
+	}
+
+	setBufnum { |bufnum=0|
+		recorder.set(\bufnum, bufnum);
 	}
 
 	prCreateWidgets {
@@ -124,13 +155,47 @@ SNSampler : AbstractSNSampler {
 			"{ |cv| CVCenter.scv.samplers['%'].sample(cv.input.booleanValue) }".format(name),
 			0, 0
 		);
-		this.cvCenterAddWidget("-in", 0, \in,
+		this.cvCenterAddWidget("-in", inBus, \in,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\in, cv.value)
+				CVCenter.scv.samplers['%'].recorder.set(\\in, cv.value);
+				CVCenter.scv.samplers['%'].inBus_(cv.value);
 			}".format(name)
 		);
-		this.cvCenterAddWidget("-set bufnum", 0, [0, numBuffers - 1, \lin, 1, 0], { |cv|
-			recorder.set(\bufnum, buffers[cv.value].bufnum);
-		});
+		this.cvCenterAddWidget("-set bufnum", 0, [0, numBuffers - 1, \lin, 1, 0],
+			"{ |cv|
+				CVCenter.scv.samplers['%'].setBufnum(cv.value);
+			}".format(name)
+		);
+		this.cvCenterAddWidget("-compressor", 0, nil,
+			"{ |cv|
+				CVCenter.scv.samplers['%'].recorder.set(\\compress, cv.value)
+			}".format(name),
+			0, 0
+		);
+		this.cvCenterAddWidget("-compThresh", 0.5, nil,
+			"{ |cv|
+				CVCenter.scv.samplers['%'].recorder.set(\\compThresh, cv.value)
+			}".format(name)
+		);
+		this.cvCenterAddWidget("-clampTime", 0.01, nil,
+			"{ |cv|
+				CVCenter.scv.samplers['%'].recorder.set(\\clampTime, cv.value)
+			}".format(name)
+		);
+		this.cvCenterAddWidget("-slopeBelow", 1.0, nil,
+			"{ |cv|
+				CVCenter.scv.samplers['%'].recorder.set(\\slopeBelow, cv.value)
+			}".format(name)
+		);
+		this.cvCenterAddWidget("-slopeAbove", 0.5, nil,
+			"{ |cv|
+				CVCenter.scv.samplers['%'].recorder.set(\\slopeAbove, cv.value)
+			}".format(name)
+		);
+		this.cvCenterAddWidget("-relaxTime", 0.01, nil,
+			"{ |cv|
+				CVCenter.scv.samplers['%'].recorder.set(\\relaxTime, cv.value)
+			}".format(name)
+		);
 	}
 }
