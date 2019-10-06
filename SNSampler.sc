@@ -6,6 +6,7 @@ SNSampler : AbstractSNSampler {
 	var <>randomBufferSelect = false;
 	var <>inBus;
 	var controllerKeys;
+	var <>doneAction;
 
 	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, server, oscFeedbackAddress|
 		^super.newCopyArgs(
@@ -34,7 +35,7 @@ SNSampler : AbstractSNSampler {
 		};
 	}
 
-	setupSampler { |in=0|
+	setupSampler { |in=0, doneAction|
 		server.waitForBoot {
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, numChannels);
 			loopLengths = bufLength ! numBuffers;
@@ -98,12 +99,13 @@ SNSampler : AbstractSNSampler {
 						usedBuffers = false ! numBuffers;
 					};
 					length = offTime - onTime;
-					"stop sampling, buffer length: %\n".postf(length);
+					"stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
 					if (length > bufLength) {
 						loopLengths[bufIndex] = bufLength;
 					} {
 						loopLengths[bufIndex] = length;
 					};
+					this.doneAction.value(bufIndex, loopLengths[bufIndex]);
 					// this.prSetSpecConstraints(bufIndex, loopLengths[bufIndex]);
 					// Ndef((name ++ "Out").asSymbol).play;
 					// this.prSetCVValues(bufIndex);
@@ -128,18 +130,14 @@ SNSampler : AbstractSNSampler {
 		samplingModel.value_(bool).changedKeys(controllerKeys)
 	}
 
-	setSamplingDoneAction { |func|
-		if (controllerKeys.includes(\done).not) {
-			controllerKeys = controllerKeys.add(\done)
-		};
-		samplingController.put(\done, { |changer, what|
-			func.value(changer, what);
-		})
-	}
-
-	resetBuffers {
-		buffers.do(_.zero);
-		loopLengths = bufLength ! numBuffers;
+	reset { |index|
+		if (index.isNil) {
+			buffers.do(_.zero);
+			loopLengths = bufLength ! numBuffers;
+		} {
+			buffers[index].zero;
+			loopLengths[index] = bufLength;
+		}
 	}
 
 	setBufnum { |bufnum=0|
@@ -197,5 +195,10 @@ SNSampler : AbstractSNSampler {
 				CVCenter.scv.samplers['%'].recorder.set(\\relaxTime, cv.value)
 			}".format(name)
 		);
+		this.cvCenterAddWidget("-bypass-amp", 0.0, \amp,
+			"{ |cv|
+				CVCenter.scv.samplers['%'].recorder.set(\\bypassAmp, cv.value)
+			}".format(name)
+		)
 	}
 }

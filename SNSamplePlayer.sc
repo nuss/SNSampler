@@ -3,8 +3,9 @@ SNSamplePlayer : AbstractSNSampler {
 	var <name, <bufLength;
 	var <>buffers, numBuffers;
 	var <server, <loopLengths;
-	var <>debug = false;
+	var <debug = false;
 	var looperName, outName;
+	var trace;
 
 	*new { |name=\Looper, bufLength=60, server|
 		^super.newCopyArgs(
@@ -19,6 +20,19 @@ SNSamplePlayer : AbstractSNSampler {
 		server ?? { server = Server.default };
 		looperName = (name ++ \Loops).asSymbol;
 		outName = (name ++ \Out).asSymbol;
+		trace = PatternProxy.new;
+	}
+
+	debug_ { |bool|
+		if (bool) {
+			trace.setSource(
+				Pfunc { |e|
+					"index: %, bufnum: %, dur: %\n".format(e.channelOffset, e.bufnum, e.dur)
+				}.trace
+			)
+		} {
+			trace.setSource(0)
+		};
 	}
 
 	setupPlayer { |bufferArray, volumeControlNode=1000|
@@ -52,7 +66,7 @@ SNSamplePlayer : AbstractSNSampler {
 		}
 	}
 
-	prSetCVValues { |bufIndex|
+	/*prSetCVValues { |bufIndex|
 		var amps, durs, ends;
 		amps = CVCenter.at((name ++ \GrainAmp).asSymbol).value;
 		amps[bufIndex] = 1;
@@ -69,7 +83,7 @@ SNSamplePlayer : AbstractSNSampler {
 				CVCenter.at((name ++ \End).asSymbol).value
 			)
 		}
-	}
+	}*/
 
 	prSetUpControls { |volumeControl|
 		CVCenter.use((name ++ "Start").asSymbol, [0!numBuffers, loopLengths/bufLength], tab: looperName);
@@ -80,10 +94,13 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
 		CVCenter.use((name ++ "Dec").asSymbol, #[0.02, 7, \exp] ! numBuffers, tab: looperName);
 		CVCenter.use((name ++ "Curve").asSymbol, #[-4, 4] ! numBuffers, 0, looperName);
-		CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], loopLengths, looperName);
+		// should empty loops loop at minimal duration? Samples will only become audible after current loop has finished.
+		// It seems to be impossible to restart loops inbetween ;\
+		CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], 0.1 ! numBuffers, looperName);
+		// CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], loopLengths, looperName);
 		CVCenter.use((name ++ "GrainAmp").asSymbol, \amp ! numBuffers, tab: looperName);
 
-		this.initPdef(this.buffers);
+		this.initPdef;
 
 		Ndef(outName)[0] = {
 			Splay.ar(\in.ar(0 ! numBuffers), (name ++ \Spread).asSymbol.kr(0.5), 1, (name ++ \Center).asSymbol.kr(0.0))
@@ -91,30 +108,18 @@ SNSamplePlayer : AbstractSNSampler {
 
 		Spec.add((name ++ \Center).asSymbol, \pan);
 		Spec.add((name ++ \Amp).asSymbol, \amp);
-		Ndef(outName).cvcGui(prefix: outName, excemptArgs: [\in]);
 
 		Ndef(outName) <<> Ndef(looperName);
 		Ndef(outName)[volumeControl] = \filter -> { |in|
 			in * (name ++ \Amp).asSymbol.kr(1)
-		}
+		};
+		Ndef(outName).cvcGui(false, outName, excemptArgs: [\in]);
 	}
 
 	initPdef { |bufferArray|
-		var trace = PatternProxy.new;
-
 		bufferArray !? {
 			this.buffers = bufferArray;
 			numBuffers = this.buffers.size;
-		};
-
-		if (this.debug) {
-			trace.setSource(
-				Pfunc { |e|
-					"index: %, bufnum: %, dur: %\n".format(e.channelOffset, e.bufnum, e.dur)
-				}.trace
-			)
-		} {
-			trace.setSource(0)
 		};
 
 		// CVCenter.at((name ++ \Dur).asSymbol).spec_([0.1!numBuffers, loopLengths].asSpec);
@@ -146,12 +151,22 @@ SNSamplePlayer : AbstractSNSampler {
 
 		Ndef(looperName).mold(numBuffers, \audio, \elastic);
 		Ndef(looperName)[0] = Pdef(looperName);
+		Ndef(looperName).pause;
 	}
 
 	setLoopMaxLength { |index, length|
-		var maxval = CVCenter.cvWidgets[(name ++ \Dur).asSymbol].getSpec.maxval;
+		var durName = (name ++ \Dur).asSymbol,
+		durWdgt = CVCenter.cvWidgets[durName],
+		durCV = CVCenter.at(durName),
+		durSpec = durWdgt.getSpec,
+		val = durCV.value,
+		maxval = durSpec.maxval;
+
 		maxval[index] = length;
-		CVCenter.cvWidgets[(name ++ \Dur).asSymbol].getSpec.maxval_(maxval);
+		durSpec.maxval_(maxval);
+		val[index] = maxval[index];
+		CVCenter.at(durName).value_(val);
+		// Pdef(looperName).reset;
 	}
 
 	play {
@@ -170,8 +185,7 @@ SNSamplePlayer : AbstractSNSampler {
 		Ndef(outName).clear(fadeTime);
 		fork {
 			fadeTime.wait;
-			Ndef(looperName).clear;
-			Pdef(looperName).clear;
+			[Ndef(looperName), Pdef(looperName)].do(_.clear);
 			all[name] = nil;
 		}
 	}
