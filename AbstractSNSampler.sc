@@ -15,10 +15,10 @@ AbstractSNSampler {
 	}
 
 	// handle widget creation in CVCenter
-	cvCenterAddWidget { |suffix="", value, spec, func, midiMode, softWithin|
+	cvCenterAddWidget { |suffix="", value, spec, func, tab, midiMode, softWithin|
 		var wdgtName = (this.name.asString ++ suffix).asSymbol;
 		CVCenter.all[wdgtName] ?? {
-			CVCenter.use(wdgtName, spec, value, this.name);
+			CVCenter.use(wdgtName, spec, value, tab ? this.name);
 			func !? {
 				if (func.class == String) {
 					func = func.interpret;
