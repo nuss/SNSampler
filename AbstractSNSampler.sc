@@ -7,8 +7,7 @@ AbstractSNSampler {
 			var env = EnvGen.ar(Env.asr(atk, sust, rel, curve), gate, doneAction: 2);
 			var outp = BufRd.ar(
 				1, bufnum,
-				Phasor.ar(t_trig, BufRateScale.kr(bufnum) * rate * tempo, start * BufFrames.kr(bufnum), end * BufFrames.kr(bufnum))/*,
-				BufFrames.kr(bufnum)*/
+				Phasor.ar(t_trig, BufRateScale.kr(bufnum) * rate * tempo, start * BufFrames.kr(bufnum), end * BufFrames.kr(bufnum))
 			);
 			Out.ar(out, outp * env * \grainAmp.kr(0.5));
 		}).add;
