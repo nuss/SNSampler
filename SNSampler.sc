@@ -134,10 +134,10 @@ SNSampler : AbstractSNSampler {
 	reset { |index|
 		if (index.isNil) {
 			buffers.do(_.zero);
-			loopLengths = bufLength ! numBuffers;
+			loopLengths = 0.1 ! numBuffers;
 		} {
 			buffers[index].zero;
-			loopLengths[index] = bufLength;
+			loopLengths[index] = 0.1;
 		}
 	}
 

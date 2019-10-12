@@ -1,16 +1,17 @@
 SNSamplePlayer : AbstractSNSampler {
 	classvar <all;
-	var <name, <bufLength;
+	var <name, <bufLength, <>mode;
 	var <>buffers, numBuffers;
 	var <server, <loopLengths;
 	var <debug = false;
 	var looperName, outName;
 	var trace;
 
-	*new { |name=\Looper, bufLength=60, server|
+	*new { |name=\Looper, bufLength=60, mode=\grain, server|
 		^super.newCopyArgs(
 			name.asSymbol,
 			bufLength,
+			mode
 		).init(server);
 	}
 
@@ -46,7 +47,7 @@ SNSamplePlayer : AbstractSNSampler {
 
 		loopLengths = bufLength ! numBuffers;
 		this.prSetUpControls(volumeControlNode);
-		// this.initPdef(bufferArray);
+		// this.prInitPatternPlayer(bufferArray);
 	}
 
 	prSetSpecConstraints { |index, length|
@@ -92,7 +93,7 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
 		CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, 1, looperName);
 		CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
-		CVCenter.use((name ++ "Dec").asSymbol, #[0.02, 7, \exp] ! numBuffers, tab: looperName);
+		// CVCenter.use((name ++ "Dec").asSymbol, #[0.02, 7, \exp] ! numBuffers, tab: looperName);
 		CVCenter.use((name ++ "Curve").asSymbol, #[-4, 4] ! numBuffers, 0, looperName);
 		// should empty loops loop at minimal duration? Samples will only become audible after current loop has finished.
 		// It seems to be impossible to restart loops inbetween ;\
@@ -100,7 +101,7 @@ SNSamplePlayer : AbstractSNSampler {
 		// CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], loopLengths, looperName);
 		CVCenter.use((name ++ "GrainAmp").asSymbol, \amp ! numBuffers, tab: looperName);
 
-		this.initPdef;
+		this.prInitPatternPlayer;
 
 		Ndef(outName)[0] = {
 			Splay.ar(\in.ar(0 ! numBuffers), (name ++ \Spread).asSymbol.kr(0.5), 1, (name ++ \Center).asSymbol.kr(0.0))
@@ -116,7 +117,7 @@ SNSamplePlayer : AbstractSNSampler {
 		Ndef(outName).cvcGui(false, outName, excemptArgs: [\in]);
 	}
 
-	initPdef { |bufferArray|
+	prInitPatternPlayer { |bufferArray|
 		bufferArray !? {
 			this.buffers = bufferArray;
 			numBuffers = this.buffers.size;
@@ -126,32 +127,112 @@ SNSamplePlayer : AbstractSNSampler {
 		// CVCenter.at((name ++ \Start).asSymbol).spec_([0!numBuffers, loopLengths/bufLength].asSpec);
 		// CVCenter.at((name ++ \End).asSymbol).spec_([0!numBuffers, loopLengths/bufLength, \lin, 0.0, loopLengths/bufLength].asSpec);
 
-		Pdef(looperName,
-			Ppar({ |i|
-				Pbind(
-					\instrument, \grain,
-					// buffers in the buffers array may start with a bufnum higher than 0
-					// so we check the bufnum by addressing the buffer at index i
-					\bufnum, buffers[i].bufnum,
-					\start, CVCenter.cvWidgets[(name ++ "Start").asSymbol].split[i],
-					\end, CVCenter.cvWidgets[(name ++ "End").asSymbol].split[i],
-					\rate, CVCenter.cvWidgets[(name ++ "Rate").asSymbol].split[i],
-					\atk, CVCenter.cvWidgets[(name ++ "Atk").asSymbol].split[i],
-					\sust, CVCenter.cvWidgets[(name ++ "Sust").asSymbol].split[i],
-					\rel, CVCenter.cvWidgets[(name ++ "Rel").asSymbol].split[i],
-					\dec, CVCenter.cvWidgets[(name ++ "Dec").asSymbol].split[i],
-					\curve, CVCenter.cvWidgets[(name ++ "Curve").asSymbol].split[i],
-					\dur, CVCenter.cvWidgets[(name ++ "Dur").asSymbol].split[i],
-					\amp, CVCenter.cvWidgets[(name ++ "GrainAmp").asSymbol].split[i],
-					\channelOffset, i,
-					\trace, trace
-				)
-			} ! numBuffers)
-		);
+		this.initDef;
 
 		Ndef(looperName).mold(numBuffers, \audio, \elastic);
 		Ndef(looperName)[0] = Pdef(looperName);
 		Ndef(looperName).pause;
+	}
+
+	initDef { |mode, bufferArray|
+		var def;
+
+		mode !? { this.mode(mode) };
+		bufferArray !? {
+			if (bufferArray.size != numBuffers) {
+				Error("The number od buffers passed to initDef must equal numBuffers!").throw;
+			} {
+				this.buffers = bufferArray;
+			}
+		};
+
+		switch(this.mode,
+			\grain, {
+				CVCenter.at((name ++ "Atk").asSymbol) ?? {
+					CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
+				};
+				CVCenter.at((name ++ "Sust").asSymbol) ?? {
+					CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, tab: looperName);
+				};
+				CVCenter.at((name ++ "Rel").asSymbol) ?? {
+					CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
+				};
+
+				def = Pdef(looperName,
+					Ppar({ |i|
+						Pbind(
+							\instrument, \grain,
+							// buffers in the buffers array may start with a bufnum higher than 0
+							// so we check the bufnum by addressing the buffer at index i
+							\bufnum, buffers[i].bufnum,
+							\start, CVCenter.cvWidgets[(name ++ "Start").asSymbol].split[i],
+							\end, CVCenter.cvWidgets[(name ++ "End").asSymbol].split[i],
+							\rate, CVCenter.cvWidgets[(name ++ "Rate").asSymbol].split[i],
+							\atk, CVCenter.cvWidgets[(name ++ "Atk").asSymbol].split[i],
+							\sust, CVCenter.cvWidgets[(name ++ "Sust").asSymbol].split[i],
+							\rel, CVCenter.cvWidgets[(name ++ "Rel").asSymbol].split[i],
+							// \dec, CVCenter.cvWidgets[(name ++ "Dec").asSymbol].split[i],
+							\curve, CVCenter.cvWidgets[(name ++ "Curve").asSymbol].split[i],
+							\dur, CVCenter.cvWidgets[(name ++ "Dur").asSymbol].split[i],
+							\amp, CVCenter.cvWidgets[(name ++ "GrainAmp").asSymbol].split[i],
+							\channelOffset, i,
+							\trace, trace
+						)
+					} ! numBuffers)
+				)
+			},
+			\mono, {
+				def = Pdef(looperName,
+					Ppar({ |i|
+						Pmono(
+							\grain,
+							\bufnum, buffers[i].bufnum,
+							\start, CVCenter.cvWidgets[(name ++ "Start").asSymbol].split[i],
+							\end, CVCenter.cvWidgets[(name ++ "End").asSymbol].split[i],
+							\rate, CVCenter.cvWidgets[(name ++ "Rate").asSymbol].split[i],
+							\dur, CVCenter.cvWidgets[(name ++ "Dur").asSymbol].split[i],
+							\amp, CVCenter.cvWidgets[(name ++ "GrainAmp").asSymbol].split[i],
+							\channelOffset, i,
+							\trace, trace
+						)
+					} ! numBuffers)
+				)
+			},
+			\ndef, {
+				def = {
+					var trigs, rates, starts, ends, out;
+					trigs = \t_trigs.kr(0 ! numBuffers);
+					rates = \rates.kr(1 ! numBuffers);
+					starts = \starts.kr(0.0 ! numBuffers);
+					ends = \ends.kr(1.0 ! numBuffers);
+
+					out = this.buffers.collect { |b, i|
+						PufRd.ar(
+							1, b.bufnum,
+							Phasor.ar(trigs[i], BufRateScale.kr(b.bufnum) * rates[i], starts[i] * BufFrames.kr(b.bufnum), ends[i] * BufFrames.kr(b.bufnum))
+						)
+					};
+					CVCenter.addActionAt(\rates, 'set rates',
+						"{ |cv|
+							Ndef(%).set(\\rates, cv.value )
+						}"
+					);
+					CVCenter.addActionAt(\starts, 'set rates',
+						"{ |cv|
+							Ndef(%).set(\\starts, cv.value )
+						}"
+					);
+					CVCenter.addActionAt(\ends, 'set rates',
+						"{ |cv|
+							Ndef(%).set(\\ends, cv.value )
+						}"
+					);
+					out;
+				}
+			}
+		)
+
+		^def;
 	}
 
 	setLoopMaxLength { |index, length|
