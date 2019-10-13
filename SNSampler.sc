@@ -22,7 +22,7 @@ SNSampler : AbstractSNSampler {
 		controllerKeys = [];
 		name = argName.asSymbol;
 		if (all.includesKey(name)) {
-			Error("A looper under the name '%' already exists".format(name)).throw;
+			Error("A sampler under the name '%' already exists".format(name)).throw;
 		};
 		all = all.put(name.asSymbol, this);
 		loopLengths = bufLength ! numBuffers;

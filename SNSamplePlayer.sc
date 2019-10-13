@@ -71,14 +71,9 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ "Start").asSymbol, [0!numBuffers, loopLengths/bufLength], tab: looperName);
 		CVCenter.use((name ++ "End").asSymbol, [0!numBuffers, loopLengths/bufLength], loopLengths/bufLength, looperName);
 		CVCenter.use((name ++ "Rate").asSymbol, #[-2, 2] ! numBuffers, 1.0, tab: looperName);
-		CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
-		CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, 1, looperName);
-		CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
 		// CVCenter.use((name ++ "Dec").asSymbol, #[0.02, 7, \exp] ! numBuffers, tab: looperName);
-		CVCenter.use((name ++ "Curve").asSymbol, #[-4, 4] ! numBuffers, 0, looperName);
 		// should empty loops loop at minimal duration? Samples will only become audible after current loop has finished.
 		// It seems to be impossible to restart loops inbetween ;\
-		CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], 0.1 ! numBuffers, looperName);
 		// CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], loopLengths, looperName);
 		CVCenter.use((name ++ "GrainAmp").asSymbol, \amp ! numBuffers, tab: looperName);
 
@@ -132,6 +127,11 @@ SNSamplePlayer : AbstractSNSampler {
 
 		switch(this.mode,
 			\grain, {
+				CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, 1, looperName);
+				CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ "Curve").asSymbol, #[-4, 4] ! numBuffers, 0, looperName);
+				CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], 0.1 ! numBuffers, looperName);
 				CVCenter.at((name ++ "Atk").asSymbol) ?? {
 					CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
 				};
@@ -166,6 +166,7 @@ SNSamplePlayer : AbstractSNSampler {
 				)
 			},
 			\mono, {
+				CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], 0.1 ! numBuffers, looperName);
 				def = Pdef(looperName,
 					Ppar({ |i|
 						Pmono(
@@ -183,27 +184,27 @@ SNSamplePlayer : AbstractSNSampler {
 				)
 			},
 			\ndef, {
-				CVCenter.use((name ++ \Rtrig).asSymbol, \trig ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ \Rtrig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Rtrig).asSymbol, 'set rate trigger',
 					"{ |cv| Ndef('%').set(\\rtrigs, cv.value) }".format(looperName);
 				);
-				CVCenter.use((name ++ \Rthresh).asSymbol, #[10, 10000, \exp] ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ \Rthresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Rthresh).asSymbol, 'set rate threshhold',
 					"{ |cv| Ndef('%').set(\\rthreshs, cv.value) }".format(looperName)
 				);
-				CVCenter.use((name ++ \Strig).asSymbol, \trig ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ \Strig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Strig).asSymbol, 'set start trigger',
 					"{ |cv| Ndef('%').set(\\strigs, cv.value) }".format(looperName)
 				);
-				CVCenter.use((name ++ \Sthresh).asSymbol, #[10, 10000, \exp] ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ \Sthresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Sthresh).asSymbol, 'set start treshhold',
 					"{ |cv| Ndef('%').set(\\sthreshs, cv.value) }".format(looperName)
 				);
-				CVCenter.use((name ++ \Etrig).asSymbol, \trig ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ \Etrig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Etrig).asSymbol, 'set end trigger',
 					"{ |cv| Ndef('%').set(\\etrigs, cv.value) }".format(looperName);
 				);
-				CVCenter.use((name ++ \Ethresh).asSymbol, #[10, 10000, \exp] ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ \Ethresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Ethresh).asSymbol, 'set end threshhold',
 					"{ |cv| Ndef('%').set(\\ethreshs, cv.value) }".format(looperName);
 				);
@@ -228,29 +229,30 @@ SNSamplePlayer : AbstractSNSampler {
 					ratesTrigs, ratesThreshs, startsTrigs,
 					startsThreshs, endsTrigs, endsThreshs;
 
-					trigs = \t_trigs.kr(0 ! numBuffers);
+					trigs = \t_trigs.tr(0 ! numBuffers);
 					rates = \rates.kr(1 ! numBuffers);
-					ratesTrigs = \rtrigs.kr(0 ! numBuffers);
-					ratesThreshs = \rthreshs.kr(100 ! numBuffers);
+					ratesTrigs = \rtrigs.tr(0.0 ! numBuffers);
+					ratesThreshs = \rthreshs.kr(1 ! numBuffers);
 					starts = \starts.kr(0.0 ! numBuffers);
-					startsTrigs = \strigs.kr(0 ! numBuffers);
-					startsThreshs = \sthreshs.kr(100 ! numBuffers);
-					ends = \ends.kr(1.0 ! numBuffers);
-					endsTrigs = \etrigs.kr(0 ! numBuffers);
-					endsThreshs = \ethreshs.kr(100 ! numBuffers);
+					startsTrigs = \strigs.tr(0.0 ! numBuffers);
+					startsThreshs = \sthreshs.kr(1 ! numBuffers);
+					ends = \ends.kr(1 ! numBuffers);
+					endsTrigs = \etrigs.tr(0.0 ! numBuffers);
+					endsThreshs = \ethreshs.kr(1 ! numBuffers);
 
 					out = this.buffers.collect { |b, i|
 						BufRd.ar(
 							1, b.bufnum,
 							Phasor.ar(
 								trigs[i],
-								BufRateScale.kr(b.bufnum) * Latch.kr(rates[i], Trig.kr(ratesTrigs[i] > ratesThreshs[i])),
-								Latch.kr(starts[i], Trig.kr(startsTrigs[i] > startsThreshs[i])) * BufFrames.kr(b.bufnum),
-								Latch.kr(ends[i], Trig.kr(endsTrigs[i] > endsThreshs[i])) * BufFrames.kr(b.bufnum)
+								BufRateScale.kr(b.bufnum) * Latch.kr(rates[i], Trig.kr(ratesTrigs[i] > ratesThreshs[i]))/*.poll(label: \rate)*/,
+								// starts[i] * BufFrames.kr(b.bufnum),
+								// ends[i].poll(label: \end) * BufFrames.kr(b.bufnum)
+								Latch.kr(starts[i], Trig.kr(startsTrigs[i] > startsThreshs[i]))/*.poll(label: \start)*/ * BufFrames.kr(b.bufnum),
+								Latch.kr(ends[i], Trig.kr(endsTrigs[i] > endsThreshs[i]))/*.poll(label: \end)*/ * BufFrames.kr(b.bufnum)
 							)
 						)
-					};
-					out;
+					}
 				}
 			}
 		)
@@ -259,17 +261,59 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	setLoopMaxLength { |index, length|
-		var durName = (name ++ \Dur).asSymbol,
-		durWdgt = CVCenter.cvWidgets[durName],
-		durCV = CVCenter.at(durName),
-		durSpec = durWdgt.getSpec,
-		val = durCV.value,
-		maxval = durSpec.maxval;
+		var durName = (name ++ \Dur).asSymbol;
+		var startName = (name ++ \Start).asSymbol;
+		var endName = (name ++ \End).asSymbol;
+		var strigName = (name ++ \Strig).asSymbol;
+		var sthreshName = (name ++ \Sthresh).asSymbol;
+		var etrigName = (name ++ \Etrig).asSymbol;
+		var ethreshName = (name ++ \Sthresh).asSymbol;
+		var durWdgt, durCV, durSpec;
+		var startWdgt, startCV, startSpec;
+		var endWdgt, endCV, endSpec;
+		var val, maxval;
 
-		maxval[index] = length;
-		durSpec.maxval_(maxval);
-		val[index] = maxval[index];
-		CVCenter.at(durName).value_(val);
+		if (this.mode != \ndef) {
+			durWdgt = CVCenter.cvWidgets[durName];
+			durCV = CVCenter.at(durName);
+			durSpec = durWdgt.getSpec;
+			val = durCV.value;
+			maxval = durSpec.maxval;
+
+			maxval[index] = length;
+			durSpec.maxval_(maxval);
+			val[index] = maxval[index];
+			CVCenter.at(durName).value_(val);
+		} {
+			startWdgt = CVCenter.cvWidgets[startName];
+			endWdgt = CVCenter.cvWidgets[endName];
+			startCV = CVCenter.at(startName);
+			endCV = CVCenter.at(endName);
+			startSpec = startCV.spec;
+			endSpec = endCV.spec;
+
+			val = startCV.value;
+			maxval = startSpec.maxval;
+			maxval[index] = length / bufLength;
+			startSpec.maxval_(maxval);
+			val[index] = 0; // start
+			CVCenter.at(startName).value_(val.postln);
+
+			val = endCV.value;
+			maxval = endSpec.maxval;
+			maxval[index] = length / bufLength;
+			endSpec.maxval_(maxval);
+			val[index] = maxval[index]; // end
+			CVCenter.at(endName).value_(val.postln);
+
+			val = 0 ! numBuffers;
+			val[index] = 1.1;
+			Ndef(looperName).set(
+				\rtrigs, val,
+				\strigs, val,
+				\etrigs, val
+			)
+		}
 		// Pdef(looperName).reset;
 	}
 
