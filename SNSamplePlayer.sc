@@ -4,7 +4,7 @@ SNSamplePlayer : AbstractSNSampler {
 	var <>buffers, numBuffers;
 	var <server, <loopLengths;
 	var <debug = false;
-	var looperName, outName, <looperPlayer;
+	var looperName, outName, <looperPlayer, <out;
 	var trace;
 
 	*new { |name=\Looper, bufLength=60, mode=\grain, server|
@@ -76,12 +76,15 @@ SNSamplePlayer : AbstractSNSampler {
 		// It seems to be impossible to restart loops inbetween ;\
 		// CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], loopLengths, looperName);
 		CVCenter.use((name ++ "GrainAmp").asSymbol, \amp ! numBuffers, tab: looperName);
+		CVCenter.use((name ++ \GrainAmpLag).asSymbol, \ampx4 ! numBuffers, tab: looperName);
 
 		this.prInitPatternPlayer;
 
 		Ndef(outName)[0] = {
 			Splay.ar(\in.ar(0 ! numBuffers), (name ++ \Spread).asSymbol.kr(0.5), 1, (name ++ \Center).asSymbol.kr(0.0))
 		};
+
+		out = Ndef(outName); // make out public
 
 		Spec.add((name ++ \Center).asSymbol, \pan);
 		Spec.add((name ++ \Amp).asSymbol, \amp);
@@ -210,20 +213,21 @@ SNSamplePlayer : AbstractSNSampler {
 				);
 
 				CVCenter.addActionAt((name ++ \Rate).asSymbol, 'set rates',
-					"{ |cv|
-						Ndef('%').set(\\rates, cv.value )
-					}".format(looperName)
+					"{ |cv| Ndef('%').set(\\rates, cv.value ) }".format(looperName)
 				);
 				CVCenter.addActionAt((name ++ \Start).asSymbol, 'set starts',
-					"{ |cv|
-						Ndef('%').set(\\starts, cv.value )
-					}".format(looperName)
+					"{ |cv| Ndef('%').set(\\starts, cv.value ) }".format(looperName)
 				);
 				CVCenter.addActionAt((name ++ \End).asSymbol, 'set ends',
-					"{ |cv|
-						Ndef('%').set(\\ends, cv.value )
-					}".format(looperName)
+					"{ |cv| Ndef('%').set(\\ends, cv.value ) }".format(looperName)
 				);
+				CVCenter.addActionAt((name ++ \GrainAmp).asSymbol, 'set channel amps',
+					"{ |cv| Ndef('%').set(\\grainAmp, cv.value) }".format(looperName)
+				);
+				CVCenter.addActionAt((name ++ \GrainAmpLag).asSymbol, 'set channel amp lags',
+					"{ |cv| Ndef('%').set(\\grainAmpLag, cv.value) }".format(looperName)
+				);
+
 				def = {
 					var trigs, rates, starts, ends, out,
 					ratesTrigs, ratesThreshs, startsTrigs,
@@ -252,7 +256,8 @@ SNSamplePlayer : AbstractSNSampler {
 								Latch.kr(ends[i], Trig.kr(endsTrigs[i] > endsThreshs[i]))/*.poll(label: \end)*/ * BufFrames.kr(b.bufnum)
 							)
 						)
-					}
+					};
+					out * \grainAmp.kr(1.0 ! numBuffers, \grainAmpLag.kr(0.1 ! numBuffers));
 				}
 			}
 		)
