@@ -300,6 +300,27 @@ SNSamplePlayer : AbstractSNSampler {
 		var endWdgt, endCV, endSpec;
 		var val, maxval;
 
+		startWdgt = CVCenter.cvWidgets[startName];
+		endWdgt = CVCenter.cvWidgets[endName];
+		startCV = CVCenter.at(startName);
+		endCV = CVCenter.at(endName);
+		startSpec = startCV.spec;
+		endSpec = endCV.spec;
+
+		val = startCV.value;
+		maxval = startSpec.maxval;
+		maxval[index] = length / bufLength;
+		startSpec.maxval_(maxval);
+		val[index] = 0; // start
+		CVCenter.at(startName).value_(val.postln);
+
+		val = endCV.value;
+		maxval = endSpec.maxval;
+		maxval[index] = length / bufLength;
+		endSpec.maxval_(maxval);
+		val[index] = maxval[index]; // end
+		CVCenter.at(endName).value_(val.postln);
+
 		if (this.mode != \ndef) {
 			durWdgt = CVCenter.cvWidgets[durName];
 			durCV = CVCenter.at(durName);
@@ -311,26 +332,6 @@ SNSamplePlayer : AbstractSNSampler {
 			durSpec.maxval_(maxval);
 			val[index] = maxval[index];
 			CVCenter.at(durName).value_(val);
-			startWdgt = CVCenter.cvWidgets[startName];
-			endWdgt = CVCenter.cvWidgets[endName];
-			startCV = CVCenter.at(startName);
-			endCV = CVCenter.at(endName);
-			startSpec = startCV.spec;
-			endSpec = endCV.spec;
-
-			val = startCV.value;
-			maxval = startSpec.maxval;
-			maxval[index] = length / bufLength;
-			startSpec.maxval_(maxval);
-			val[index] = 0; // start
-			CVCenter.at(startName).value_(val.postln);
-
-			val = endCV.value;
-			maxval = endSpec.maxval;
-			maxval[index] = length / bufLength;
-			endSpec.maxval_(maxval);
-			val[index] = maxval[index]; // end
-			CVCenter.at(endName).value_(val.postln);
 		} {
 			val = 0 ! numBuffers;
 			val[index] = 1.1;
