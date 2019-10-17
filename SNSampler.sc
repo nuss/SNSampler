@@ -1,6 +1,6 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
-	var <numBuffers, <bufLength, <numChannels, <server;
+	var <numBuffers, <bufLength, <numChannels, <>bypassOut,<server;
 	var <name, <recorder, <buffers, <loopLengths, usedBuffers, <>doneAction;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime;
 	var <>randomBufferSelect = false;
@@ -8,11 +8,12 @@ SNSampler : AbstractSNSampler {
 	var controllerKeys;
 	var <>doneAction;
 
-	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, server, oscFeedbackAddress|
+	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, out=0, server, oscFeedbackAddress|
 		^super.newCopyArgs(
 			numBuffers,
 			bufLength,
 			numChannels,
+			out,
 			server ? Server.default;
 		).init(name, oscFeedbackAddress);
 	}
@@ -41,14 +42,14 @@ SNSampler : AbstractSNSampler {
 			loopLengths = bufLength ! numBuffers;
 			usedBuffers = false ! numBuffers;
 			server.sync;
-			recorder = NodeProxy.audio(server, numChannels).pause;
+			recorder = NodeProxy.audio(server, 2).pause.play;
 			if (numChannels < 2) { inBus = in } { inBus = in ! numChannels };
 			recorder[0] = {
-				var soundIn = SoundIn.ar(\in.kr(inBus));
+				var soundIn, rawIn = SoundIn.ar(\in.kr(inBus));
 				soundIn = XFade2.ar(
-					soundIn,
+					rawIn,
 					Compander.ar(
-						soundIn, soundIn,
+						rawIn, rawIn,
 						\compThresh.kr(0.5),
 						\slopeBelow.kr(1.0),
 						\slopeAbove.kr(0.5),
@@ -67,7 +68,7 @@ SNSampler : AbstractSNSampler {
 						BufFrames.kr(\bufnum.kr(0))
 					)
 				);
-				soundIn * \bypassAmp.kr(0);
+				rawIn!2 * \bypassAmp.kr(0);
 			};
 
 			this.prCreateWidgets;
@@ -120,7 +121,6 @@ SNSampler : AbstractSNSampler {
 					onTime = nil;
 				}
 			})
-
 		}
 	}
 

@@ -28,7 +28,7 @@ SNSamplePlayer : AbstractSNSampler {
 		if (bool) {
 			trace.setSource(
 				Pfunc { |e|
-					"index: %, bufnum: %, dur: %\n".format(e.channelOffset, e.bufnum, e.dur)
+					"index: %, bufnum: %, dur: %, start: %, end: %\n".format(e.channelOffset, e.bufnum, e.dur, e.start, e.end)
 				}.trace
 			)
 		} {
