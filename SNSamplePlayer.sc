@@ -25,9 +25,16 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	debug_ { |bool|
+		// var now, previous, diff;
 		if (bool) {
 			trace.setSource(
 				Pfunc { |e|
+					// previous = now;
+					// now = TempoClock.beats;
+					// previous !? {
+					// 	diff = now - previous;
+					// };
+					// "diff: %, index: %, bufnum: %, dur: %, start: %, end: %\n".format(diff, e.channelOffset, e.bufnum, e.dur, e.start, e.end)
 					"index: %, bufnum: %, dur: %, start: %, end: %\n".format(e.channelOffset, e.bufnum, e.dur, e.start, e.end)
 				}.trace
 			)
@@ -77,6 +84,7 @@ SNSamplePlayer : AbstractSNSampler {
 		// CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], loopLengths, looperName);
 		CVCenter.use((name ++ "GrainAmp").asSymbol, \amp ! numBuffers, tab: looperName);
 		CVCenter.use((name ++ \GrainAmpLag).asSymbol, \ampx4 ! numBuffers, tab: looperName);
+		CVCenter.use((name ++ \Legato).asSymbol, #[0.0, 1.0] ! numBuffers, 1.0, tab: looperName);
 
 		this.prInitPatternPlayer;
 
@@ -162,6 +170,7 @@ SNSamplePlayer : AbstractSNSampler {
 							\curve, CVCenter.cvWidgets[(name ++ "Curve").asSymbol].split[i],
 							\dur, CVCenter.cvWidgets[(name ++ "Dur").asSymbol].split[i],
 							\amp, CVCenter.cvWidgets[(name ++ "GrainAmp").asSymbol].split[i],
+							\legato, CVCenter.cvWidgets[(name ++ "Legato").asSymbol].split[i],
 							\channelOffset, i,
 							\trace, trace
 						)

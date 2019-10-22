@@ -1,24 +1,28 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
-	var <numBuffers, <bufLength, <numChannels, <>bypassOut,<server;
-	var <name, <recorder, <buffers, <loopLengths, usedBuffers, <>doneAction;
-	var <isSampling = false, samplingController, samplingModel, onTime, offTime;
+	var <numBuffers, <bufLength, <numChannels, <>bypassOut, <server, <>touchOSC, <>touchOSCPanel;
+	var <name, <recorder, <buffers, <loopLengths, <usedBuffers, <>doneAction;
+	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
 	var <>inBus;
 	var controllerKeys;
 	var <>doneAction;
 
-	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, out=0, server, oscFeedbackAddress|
+	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, out=0, server, touchOSC, touchOSCPanel=1, oscFeedbackAddress|
+		server ?? { server = Server.default };
 		^super.newCopyArgs(
 			numBuffers,
 			bufLength,
 			numChannels,
 			out,
-			server ? Server.default;
+			server,
+			touchOSC,
+			touchOSCPanel
 		).init(name, oscFeedbackAddress);
 	}
 
 	init { |argName, oscFeedbackAddress|
+		// [numBuffers, bufLength, numChannels, bypassOut, touchOSC, touchOSCPanel, server].postln;
 		all ?? { all = () };
 		controllerKeys = [];
 		name = argName.asSymbol;
@@ -37,7 +41,12 @@ SNSampler : AbstractSNSampler {
 	}
 
 	setupSampler { |in=0, doneAction|
+
+		"server: %\n".postf(server);
+
 		server.waitForBoot {
+			var oscDisplay, prefix;
+
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, numChannels);
 			loopLengths = bufLength ! numBuffers;
 			usedBuffers = false ! numBuffers;
@@ -77,16 +86,47 @@ SNSampler : AbstractSNSampler {
 			samplingModel = Ref(isSampling);
 			samplingController = SimpleController(samplingModel);
 
+			if (touchOSCPanel.notNil) {
+				prefix = "/" ++ touchOSCPanel;
+			} {
+				prefix = "";
+			};
+
+			oscDisplay = { |mode, bufIndex, panelPrefix|
+				blink ?? {
+					blink = fork({
+						loop {
+							touchOSC.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 0);
+							1.wait;
+							touchOSC.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1);
+							1.wait
+						}
+					}, AppClock);
+				};
+
+				switch(mode)
+					{ \blink } { blink.play }
+					{ \written } {
+						blink.reset.stop;
+						touchOSC.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1)
+					};
+			};
+
 			samplingController.put(\value, { |changer, what|
-				var length, nextBuf, bufIndex;
+				var length, nextBuf, bufIndex, bufnum;
 				isSampling = changer.value;
 				if (isSampling) {
 					"start sampling".postln;
 					onTime = Main.elapsedTime;
 					recorder.resume;
-					// CVCenter.at((name ++ "-start/stop").asSymbol).value_(1);
+					bufnum = recorder.get(\bufnum);
+					bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
+					[touchOSC, touchOSC.class].postln;
+					if (touchOSC.class === NetAddr) {
+						oscDisplay.(\blink, bufIndex, prefix)
+					};
 				} {
-					var bufnum, amps, durs, ends;
+					var amps, durs, ends;
 					offTime = Main.elapsedTime;
 					recorder.pause;
 					// reset phasor before next sampling
@@ -116,6 +156,11 @@ SNSampler : AbstractSNSampler {
 					} {
 						nextBuf = usedBuffers.selectIndex{ |bool| bool == false }.choose;
 					};
+
+					if (touchOSC.class === NetAddr) {
+						oscDisplay.(\written, bufIndex, prefix)
+					};
+
 					recorder.set(\bufnum, buffers[nextBuf].bufnum);
 					CVCenter.at((name ++ "-set bufnum").asSymbol).value_(nextBuf);
 					onTime = nil;
@@ -131,13 +176,16 @@ SNSampler : AbstractSNSampler {
 		samplingModel.value_(bool).changedKeys(controllerKeys)
 	}
 
-	reset { |index|
+	reset { |index, doneAction|
 		if (index.isNil) {
 			buffers.do(_.zero);
 			loopLengths = 0.1 ! numBuffers;
 		} {
 			buffers[index].zero;
 			loopLengths[index] = 0.1;
+		};
+		if (doneAction.isFunction) {
+			doneAction.value;
 		}
 	}
 
@@ -146,10 +194,33 @@ SNSampler : AbstractSNSampler {
 	}
 
 	prCreateWidgets {
+		var prefix;
+
+
+
 		CVCenter.scv.samplers ?? {
 			CVCenter.scv.samplers = ();
 		};
 		CVCenter.scv.samplers.put(name, this);
+
+		if (touchOSCPanel.notNil) {
+			prefix = "/" ++ touchOSCPanel;
+		} {
+			prefix = "";
+		};
+
+		numBuffers.do { |i|
+			this.cvCenterAddWidget("-buf%reset".format(i), 0, #[0, 1, \lin, 1],
+				"{ |cv|
+					CVCenter.scv.samplers['%'].touchOSC !? {
+						if (CVCenter.scv.samplers['%'].touchOSC.class === NetAddr) {
+							CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/sample_buf_%\", 0);
+						};
+						CVCenter.scv.samplers['%'].reset(%)
+					}
+				}".format(name, name, name, prefix, i, name, i)
+			)
+		};
 		this.cvCenterAddWidget("-start/stop", 0, #[0, 1, \lin, 1, 0],
 			"{ |cv| CVCenter.scv.samplers['%'].sample(cv.input.booleanValue) }".format(name),
 			midiMode: 0, softWithin: 0
@@ -204,8 +275,14 @@ SNSampler : AbstractSNSampler {
 		this.cvCenterAddWidget("-bypass-amp", 0.0, \amp,
 			"{ |cv|
 				CVCenter.scv.samplers['%'].recorder.set(\\bypassAmp, cv.value)
-			}".format(name)
-		)
+			}".format(name),
+			midiMode: 0, softWithin: 0
+		);
+		this.cvCenterAddWidget("-setCompressor", 0, #[0, 1, \lin, 1],
+			"{ |cv|
+				CVCenter.scv.samplers['%'].setInputCompressor
+			}".format(name), name
+		);
 	}
 
 	// empirically gained defaults

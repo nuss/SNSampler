@@ -44,7 +44,7 @@ AbstractSNSampler {
 				}
 			},
 			CVWidgetMS, {
-				CVenter.at(wdgtName).spec.size.do { |i|
+				CVCenter.at(wdgtName).spec.size.do { |i|
 					midiMode !? { CVCenter.cvWidgets[wdgtName].setMidiMode(midiMode, i) };
 					softWithin !? { CVCenter.cvWidgets[wdgtName].setSoftWithin(softWithin, i) };
 				}
