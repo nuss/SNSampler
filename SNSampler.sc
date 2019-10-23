@@ -221,6 +221,10 @@ SNSampler : AbstractSNSampler {
 				}".format(name, name, name, prefix, i, name, i)
 			)
 		};
+		this.cvCenterAddWidget("-resetAll", 0, #[0, 1, \lin, 1],
+			"{ |cv| CVCenter.scv.samplers['%'].reset }".format(name),
+			midiMode: 0, softWithin: 0
+		);
 		this.cvCenterAddWidget("-start/stop", 0, #[0, 1, \lin, 1, 0],
 			"{ |cv| CVCenter.scv.samplers['%'].sample(cv.input.booleanValue) }".format(name),
 			midiMode: 0, softWithin: 0
