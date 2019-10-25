@@ -141,6 +141,7 @@ SNSampler : AbstractSNSampler {
 						usedBuffers = false ! numBuffers;
 					};
 					length = offTime - onTime;
+					(length < 0.1).if { length = 0.1 };
 					"stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
 					if (length > bufLength) {
 						loopLengths[bufIndex] = bufLength;
