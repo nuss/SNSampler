@@ -374,5 +374,9 @@ SNSamplePlayer : AbstractSNSampler {
 		}
 	}
 
-
+	freeHangingNodes {
+		if (this.mode == \grain) {
+			Ndef(looperName).group.deepFree
+		}
+	}
 }
