@@ -1,17 +1,18 @@
 SNSamplePlayer : AbstractSNSampler {
 	classvar <all;
-	var <name, <bufLength, <>mode;
-	var <>buffers, numBuffers;
+	var <name, <bufLength, <>mode, <numOutChannels;
+	var <>buffers, numBuffers, <group;
 	var <server, <loopLengths;
 	var <debug = false;
 	var looperName, outName, <looperPlayer, <out;
 	var trace;
 
-	*new { |name=\Looper, bufLength=60, mode=\grain, server|
+	*new { |name=\Looper, bufLength=60, mode=\grain, numOutChannels=2, server|
 		^super.newCopyArgs(
 			name.asSymbol,
 			bufLength,
-			mode
+			mode,
+			numOutChannels
 		).init(server);
 	}
 
@@ -78,18 +79,33 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ "Start").asSymbol, [0!numBuffers, loopLengths/bufLength], tab: looperName);
 		CVCenter.use((name ++ "End").asSymbol, [0!numBuffers, loopLengths/bufLength], loopLengths/bufLength, looperName);
 		CVCenter.use((name ++ "Rate").asSymbol, #[-2, 2] ! numBuffers, 1.0, tab: looperName);
-		// CVCenter.use((name ++ "Dec").asSymbol, #[0.02, 7, \exp] ! numBuffers, tab: looperName);
-		// should empty loops loop at minimal duration? Samples will only become audible after current loop has finished.
-		// It seems to be impossible to restart loops inbetween ;\
-		// CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], loopLengths, looperName);
 		CVCenter.use((name ++ "GrainAmp").asSymbol, \amp ! numBuffers, tab: looperName);
 		CVCenter.use((name ++ \GrainAmpLag).asSymbol, \ampx4 ! numBuffers, tab: looperName);
 		CVCenter.use((name ++ \Legato).asSymbol, #[0.0, 1.0] ! numBuffers, 1.0, tab: looperName);
 
 		this.prInitPatternPlayer;
 
-		Ndef(outName)[0] = {
-			Splay.ar(\in.ar(0 ! numBuffers), (name ++ \Spread).asSymbol.kr(0.5), 1, (name ++ \Center).asSymbol.kr(0.0))
+		Ndef(outName).mold(numOutChannels, \audio, \elastic);
+		group !? {
+			Ndef(outName).group_(ParGroup.new)
+		};
+
+		if (numOutChannels <= 2) {
+			Ndef(outName)[0] = {
+				Splay.ar(\in.ar(0 ! numBuffers), (name ++ \Spread).asSymbol.kr(0.5), 1, (name ++ \Center).asSymbol.kr(0.0))
+			}
+		} {
+			Ndef(outName)[0] = {
+				SplayAz.ar(
+					numOutChannels,
+					\in.ar(0 ! numBuffers),
+					(name ++ \Spread).asSymbol.kr(0.5),
+					1,
+					(name ++ \Width).asSymbol.kr(2),
+					(name ++ \Center).asSymbol.kr(0.0),
+					(name ++ \Orientation).asSymbol.kr(0.0)
+				)
+			}
 		};
 
 		out = Ndef(outName); // make out public
@@ -127,7 +143,7 @@ SNSamplePlayer : AbstractSNSampler {
 	initDef { |mode, bufferArray|
 		var def;
 
-		mode !? { this.mode(mode) };
+		mode !? { this.mode_(mode) };
 		bufferArray !? {
 			if (bufferArray.size != numBuffers) {
 				Error("The number od buffers passed to initDef must equal numBuffers!").throw;
@@ -321,14 +337,14 @@ SNSamplePlayer : AbstractSNSampler {
 		maxval[index] = length / bufLength;
 		startSpec.maxval_(maxval);
 		val[index] = 0; // start
-		CVCenter.at(startName).value_(val.postln);
+		CVCenter.at(startName).value_(val);
 
 		val = endCV.value;
 		maxval = endSpec.maxval;
 		maxval[index] = length / bufLength;
 		endSpec.maxval_(maxval);
 		val[index] = maxval[index]; // end
-		CVCenter.at(endName).value_(val.postln);
+		CVCenter.at(endName).value_(val);
 
 		if (this.mode != \ndef) {
 			durWdgt = CVCenter.cvWidgets[durName];
@@ -348,6 +364,14 @@ SNSamplePlayer : AbstractSNSampler {
 				\rtrigs, val,
 				\strigs, val,
 				\etrigs, val
+			)
+		};
+		if (mode === \grain) {
+			"looper at index %: start: %, end: %, duration: %\n".postf(
+				index,
+				CVCenter.at(startName).value[index],
+				CVCenter.at(endName).value[index],
+				CVCenter.at(durName).value[index]
 			)
 		}
 		// Pdef(looperName).reset;
@@ -379,4 +403,10 @@ SNSamplePlayer : AbstractSNSampler {
 			Ndef(looperName).group.deepFree
 		}
 	}
+
+	/*resetWidgets { |index|
+		if (index.isNil) {
+			CVCenter.cvWidgets[(name ++ "Start").asSymbol].setSpec()
+		}
+	}*/
 }
