@@ -284,29 +284,7 @@ SNSamplePlayer : AbstractSNSampler {
 					};
 					out * \grainAmp.kr(1.0 ! numBuffers, \grainAmpLag.kr(0.1 ! numBuffers));
 				}
-			}/*,
-			\ndefseq, {
-				CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], 0.1 ! numBuffers, looperName);
-				def = {
-					out = this.buffers.collect { |b, i|
-						BufRd.ar(
-							1, b.bufnum,
-							Phasor.ar(
-								trigs[i],
-								BufRateScale.kr(b.bufnum) * rates[i]/*.poll(label: \rate)*/,
-								starts[i] * BufFrames.kr(b.bufnum),
-								ends[i].poll(label: \end) * BufFrames.kr(b.bufnum)
-							)
-						)
-					};
-					out * \grainAmp.kr(1.0 ! numBuffers, \grainAmpLag.kr(0.1 ! numBuffers));
-				};
-				numBuffers.do { |i|
-					Ndef(looperName)[i+1] = \seti -> Pbind(
-
-					)
-				}
-			}*/
+			}
 		)
 
 		^def;
