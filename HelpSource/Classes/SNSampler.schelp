@@ -1,0 +1,215 @@
+TITLE:: SNSampler
+summary:: A classic sampler that lets you sample sequences of sounds up to a specified length.
+categories:: SNSampler
+related:: Classes/SNSamplePlayer, Classes/AbstractSNSampler, Classes/CVCenter
+
+DESCRIPTION::
+An SNSampler lets you record sequences of sound up to a specified length. When you instantiate a new SNSampler an array of consecutive empty buffers of equal length will be created. The length of these buffers determines how long the sequences emphasis::can:: be. The actual sampling is started be executing the link::#-sample:: method with a boolean argument code::true::. Again executing the same method with an argument code::false::. The length of the recorde sound will be stored in a variable link::#-loopLengths:: which stores the lengths of of all currently recorded sequences in values between code::0:: and code::1:: (code::1:: represents the longest possible sequence).
+
+CLASSMETHODS::
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: name
+(describe argument here)
+
+ARGUMENT:: numBuffers
+(describe argument here)
+
+ARGUMENT:: bufLength
+(describe argument here)
+
+ARGUMENT:: numChannels
+(describe argument here)
+
+ARGUMENT:: out
+(describe argument here)
+
+ARGUMENT:: server
+(describe argument here)
+
+ARGUMENT:: touchOSC
+(describe argument here)
+
+ARGUMENT:: touchOSCPanel
+(describe argument here)
+
+ARGUMENT:: oscFeedbackAddress
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: all
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+METHOD:: touchOSCPanel
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: numChannels
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: init
+(describe method here)
+
+ARGUMENT:: argName
+(describe argument here)
+
+ARGUMENT:: oscFeedbackAddress
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: recorder
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: buffers
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setBufnum
+(describe method here)
+
+ARGUMENT:: bufnum
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: touchOSC
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: name
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setupSampler
+(describe method here)
+
+ARGUMENT:: in
+(describe argument here)
+
+ARGUMENT:: doneAction
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isSampling
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: bufLength
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: loopLengths
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: server
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prCreateWidgets
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isSetUp
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: usedBuffers
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: randomBufferSelect
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: inBus
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: reset
+(describe method here)
+
+ARGUMENT:: index
+(describe argument here)
+
+ARGUMENT:: doneAction
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: doneAction
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: bypassOut
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: sample
+(describe method here)
+
+ARGUMENT:: bool
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setInputCompressor
+(describe method here)
+
+ARGUMENT:: thresh
+(describe argument here)
+
+ARGUMENT:: slopeBelow
+(describe argument here)
+
+ARGUMENT:: slopeAbove
+(describe argument here)
+
+ARGUMENT:: clampTime
+(describe argument here)
+
+ARGUMENT:: relaxTime
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: numBuffers
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::
