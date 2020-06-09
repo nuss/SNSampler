@@ -148,9 +148,6 @@ SNSampler : AbstractSNSampler {
 							loopLengths[bufIndex] = length;
 						};
 						this.doneAction.value(bufIndex, loopLengths[bufIndex]);
-						// this.prSetSpecConstraints(bufIndex, loopLengths[bufIndex]);
-						// Ndef((name ++ "Out").asSymbol).play;
-						// this.prSetCVValues(bufIndex);
 						if (this.randomBufferSelect.not) {
 							nextBuf = bufIndex + 1 % numBuffers;
 						} {
