@@ -9,44 +9,79 @@ An SNSampler lets you record sequences of sound up to a specified length. When y
 CLASSMETHODS::
 
 METHOD:: new
-(describe method here)
+Create a new SNSampler instance.
 
 ARGUMENT:: name
-(describe argument here)
+Optional - a link::Classes/String:: or a link::Classes/Symbol:: denoting the name for the new instance. If not given this will default to code::\sampler::.
 
 ARGUMENT:: numBuffers
-(describe argument here)
+Optional - a link::Classes/Integer:: denoting the number of consecutive buffers to be allocated. If not given this will default to code::5::.
 
 ARGUMENT:: bufLength
-(describe argument here)
+Optional - the lengths of the allocated (audio) link::Classes/Buffer::s in seconds. If not given this will default to code::60::.
 
 ARGUMENT:: numChannels
-(describe argument here)
-
-ARGUMENT:: out
-(describe argument here)
+Optional - the number of channels for each buffer. If not given this will default to code::1::.
 
 ARGUMENT:: server
-(describe argument here)
+Optional - the link::Classes/Server:: on which to allocate the audio buffers. If not given this buffers will be allocated on code::Server.default::.
 
 ARGUMENT:: touchOSC
-(describe argument here)
+Optional - a link::Classes/NetAddr:: under which an installation of the popular TouchOSC OSC controller is running.
+NOTE:: The address will be used to send feedback to TouchOSC, so you emphasis::must:: provide the port under which TouchOSC expects to emphasis::receive:: OSC messages!::
 
 ARGUMENT:: touchOSCPanel
-(describe argument here)
+Optional - TouchOSC's user interface can be organized in a number of panels. Panels are numbered, biginning from one. This is also reflected in TouchOSC's commandname structure. E.g. code::/1/toggle:: could be a toggle button on TouchOSC's first panel. If not given this will default to code::1::.
 
-ARGUMENT:: oscFeedbackAddress
-(describe argument here)
-
-returns:: (describe returnvalue here)
+returns:: an SNSampler
 
 METHOD:: all
-(describe method here)
 
-returns:: (describe returnvalue here)
-
+returns:: an link::Classes/Event::, holding all current SNSampler instances.
 
 INSTANCEMETHODS::
+
+METHOD:: setupSampler
+Before you can actually use the SNSampler instance you must specify the input bus and (probably) a procedure to be executed when sampling is done. Usually you will want to play the buffer that you've just recorded. This procedure should go into code::doneAction::.
+
+ARGUMENT:: in
+An link::Classes/Integer::, denoting the input bus. If not given this will default to code::0::.
+
+ARGUMENT:: doneAction
+A link::Classes/Function:: denoting the action that should be taken after sampling has been finished.
+
+METHOD:: setBufnum
+Set the link::Classes/Buffer#-bufnum#buffer number:: for the next sample. Incoming sound will be recorded to the buffer denoted by this value. It usually should not be necessary to set the buffer number explicitly - the sampler knows which buffers audio has already been written to and will, as long as empty buffers are still available, automatically choose an empty buffer.
+
+ARGUMENT:: bufnum
+An link::Classes/Integer:: denoting the bufnum.
+
+METHOD:: sample
+Start or stop sampling. The buffer to which the sampled audio will be written to is either determined by link::#-setBufnum:: or, if that method has not been called in advance, the next buffer number. Sampling will usually start at the lowest buffer number in the array of consecutive buffers that have been allocated in link::#-setupSampler:: or, if link::#-randomBufferSelect:: has been set to code::true:: at a random buffer number.
+
+ARGUMENT:: bool
+A link::Classes/Boolean:: determining whether sampling should be started or stopped.
+
+METHOD:: reset
+Reset one or all buffers. Recorded audio will be reset to zero, the loopLength(s) will be reset and, if given, code::doneAction:: will be executed.
+
+ARGUMENT:: index
+An link::Classes/Integer::, denoting the buffer number that should be reset.
+
+ARGUMENT:: doneAction
+A link::Classes/Function:: that will be executed upon reseting the buffer(s)
+
+SUBSECTION:: Instance variables
+
+METHOD:: loopLengths
+As already described buffers within SNSampler have a fixed maximum length. That means, if you write audio to them, buffers will likely not be filled completely. However SNSampler keeps track of the actual length of audio data within each buffer. A length of code::0:: means no audio has been written to the buffer (the whole buffer is filled with zeros) whereas code::1:: means the buffer is filled completely. code::0.5:: means exactly half of the buffer is filled (starting at the beginning of the buffer). The value is simply the ratio of the total buffer length by the length of the recorded audio.
+
+returns:: an link::Classes/Array:: of link::Classes/Float::s, resembling to the number of buffers
+
+METHOD:: usedBuffers
+The buffers that have already been written audio to.
+
+returns:: an link::Classes/Array:: of integers, denoting the buffer numbers that already contain recorded audio data
 
 METHOD:: touchOSCPanel
 (describe method here)
@@ -79,14 +114,6 @@ METHOD:: buffers
 
 returns:: (describe returnvalue here)
 
-METHOD:: setBufnum
-(describe method here)
-
-ARGUMENT:: bufnum
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: touchOSC
 (describe method here)
 
@@ -97,16 +124,6 @@ METHOD:: name
 
 returns:: (describe returnvalue here)
 
-METHOD:: setupSampler
-(describe method here)
-
-ARGUMENT:: in
-(describe argument here)
-
-ARGUMENT:: doneAction
-(describe argument here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: isSampling
 (describe method here)
@@ -114,11 +131,6 @@ METHOD:: isSampling
 returns:: (describe returnvalue here)
 
 METHOD:: bufLength
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: loopLengths
 (describe method here)
 
 returns:: (describe returnvalue here)
@@ -138,11 +150,6 @@ METHOD:: isSetUp
 
 returns:: (describe returnvalue here)
 
-METHOD:: usedBuffers
-(describe method here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: randomBufferSelect
 (describe method here)
 
@@ -153,17 +160,6 @@ METHOD:: inBus
 
 returns:: (describe returnvalue here)
 
-METHOD:: reset
-(describe method here)
-
-ARGUMENT:: index
-(describe argument here)
-
-ARGUMENT:: doneAction
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: doneAction
 (describe method here)
 
@@ -171,14 +167,6 @@ returns:: (describe returnvalue here)
 
 METHOD:: bypassOut
 (describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: sample
-(describe method here)
-
-ARGUMENT:: bool
-(describe argument here)
 
 returns:: (describe returnvalue here)
 

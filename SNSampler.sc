@@ -1,43 +1,35 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
-	var <numBuffers, <bufLength, <numChannels, <>bypassOut, <server, <>touchOSC, <>touchOSCPanel;
-	var <name, <recorder, <buffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false;
+	var <name, <numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel;
+	var <recorder, <buffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
 	var <>inBus;
 	var controllerKeys;
 	var <>doneAction;
 
-	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, out=0, server, touchOSC, touchOSCPanel=1, oscFeedbackAddress|
+	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, out=0, server, touchOSC, touchOSCPanel=1|
 		server ?? { server = Server.default };
 		^super.newCopyArgs(
+			name.asSymbol,
 			numBuffers,
 			bufLength,
 			numChannels,
-			out,
 			server,
 			touchOSC,
 			touchOSCPanel
-		).init(name, oscFeedbackAddress);
+		).init;
 	}
 
-	init { |argName, oscFeedbackAddress|
+	init {
 		// [numBuffers, bufLength, numChannels, bypassOut, touchOSC, touchOSCPanel, server].postln;
 		all ?? { all = () };
 		controllerKeys = [];
-		name = argName.asSymbol;
 		if (all.includesKey(name)) {
 			Error("A sampler under the name '%' already exists".format(name)).throw;
 		};
-		all = all.put(name.asSymbol, this);
+		all = all.put(name, this);
 		loopLengths = bufLength ! numBuffers;
-		oscFeedbackAddr !? {
-			if (oscFeedbackAddr.class !== NetAddr) {
-				Error("If supplied, oscFeedbackAddr must be a NetAddr. Given: %\n".format(oscFeedbackAddr));
-			} {
-				this.class.oscFeedbackAddr_(oscFeedbackAddr);
-			}
-		};
 	}
 
 	setupSampler { |in=0, doneAction|
@@ -91,13 +83,13 @@ SNSampler : AbstractSNSampler {
 					prefix = "";
 				};
 
-				oscDisplay = { |mode, bufIndex, panelPrefix|
+				oscDisplay = { |addr, mode, bufIndex, panelPrefix|
 					blink ?? {
 						blink = fork({
 							loop {
-								touchOSC.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 0);
+								addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 0);
 								1.wait;
-								touchOSC.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1);
+								addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1);
 								1.wait
 							}
 						}, AppClock);
@@ -107,7 +99,7 @@ SNSampler : AbstractSNSampler {
 					{ \blink } { blink.play }
 					{ \written } {
 						blink.reset.stop;
-						touchOSC.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1)
+						addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1)
 					};
 				};
 
@@ -122,7 +114,7 @@ SNSampler : AbstractSNSampler {
 						bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
 						[touchOSC, touchOSC.class].postln;
 						if (touchOSC.class === NetAddr) {
-							oscDisplay.(\blink, bufIndex, prefix)
+							oscDisplay.(touchOSC, \blink, bufIndex, prefix)
 						};
 					} {
 						var amps, durs, ends;
