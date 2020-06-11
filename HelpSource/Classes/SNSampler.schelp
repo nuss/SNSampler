@@ -63,7 +63,7 @@ ARGUMENT:: bool
 A link::Classes/Boolean:: determining whether sampling should be started or stopped.
 
 METHOD:: reset
-Reset one or all buffers. Recorded audio will be reset to zero, the loopLength(s) will be reset and, if given, code::doneAction:: will be executed.
+Reset one or all buffers. Recorded audio will be reset to zero, the link::#-loopLengths:: will be reset and, if given, code::doneAction:: will be executed.
 
 ARGUMENT:: index
 An link::Classes/Integer::, denoting the buffer number that should be reset.
@@ -71,7 +71,22 @@ An link::Classes/Integer::, denoting the buffer number that should be reset.
 ARGUMENT:: doneAction
 A link::Classes/Function:: that will be executed upon reseting the buffer(s)
 
-SUBSECTION:: Instance variables
+SUBSECTION:: Instance variables - getters and setters
+
+METHOD:: doneAction
+An action to be executed immediately after recording audio has been finished. This could e.g. be some synth that plays back the recorded audio but can be anything. The code::doneAction:: must be given as a link::Classes/Function::.
+
+METHOD:: touchOSC
+Set the link::Classes/NetAddr:: under which an installation of TouchOSC will be communicating with the sampler.
+NOTE:: The port given in the NetAddr will be the port under which TouchOSC is emphasis::listening:: to OSC messages coming from SuperCollider!::
+
+METHOD:: touchOSCPanel
+TouchOSC's graphical user interface is typically organized in panels. A toggle button on the first panel may be addressed through the following command name: code::/1/toggle1::. The code::touchOSCPanel:: should allow you to specify the panel under which buttons connected to the SNSampler live.
+
+METHOD:: randomBufferSelect
+Determine whether the next buffer for audio recording should be selected randomly. Even if this is set to code::true:: SNSampler will always try to select a buffer that has not yet been used for recording (only if all buffers have already been filled it will start overwriting already recorded audio).
+
+SUBSECTION:: Introspection
 
 METHOD:: loopLengths
 As already described buffers within SNSampler have a fixed maximum length. That means, if you write audio to them, buffers will likely not be filled completely. However SNSampler keeps track of the actual length of audio data within each buffer. A length of code::0:: means no audio has been written to the buffer (the whole buffer is filled with zeros) whereas code::1:: means the buffer is filled completely. code::0.5:: means exactly half of the buffer is filled (starting at the beginning of the buffer). The value is simply the ratio of the total buffer length by the length of the recorded audio.
@@ -82,11 +97,6 @@ METHOD:: usedBuffers
 The buffers that have already been written audio to.
 
 returns:: an link::Classes/Array:: of integers, denoting the buffer numbers that already contain recorded audio data
-
-METHOD:: touchOSCPanel
-(describe method here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: numChannels
 (describe method here)
@@ -99,22 +109,12 @@ METHOD:: init
 ARGUMENT:: argName
 (describe argument here)
 
-ARGUMENT:: oscFeedbackAddress
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: recorder
 (describe method here)
 
 returns:: (describe returnvalue here)
 
 METHOD:: buffers
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: touchOSC
 (describe method here)
 
 returns:: (describe returnvalue here)
@@ -150,22 +150,7 @@ METHOD:: isSetUp
 
 returns:: (describe returnvalue here)
 
-METHOD:: randomBufferSelect
-(describe method here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: inBus
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: doneAction
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: bypassOut
 (describe method here)
 
 returns:: (describe returnvalue here)
