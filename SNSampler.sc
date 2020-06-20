@@ -1,14 +1,14 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
-	var <name, <numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel;
-	var <recorder, <buffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false;
+	var <name, numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel;
+	var <recorder, <buffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
-	var <>inBus;
+	var <inBus;
 	var controllerKeys;
 	var <>doneAction;
 
-	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, out=0, server, touchOSC, touchOSCPanel=1|
+	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, server, touchOSC, touchOSCPanel=1|
 		server ?? { server = Server.default };
 		^super.newCopyArgs(
 			name.asSymbol,
@@ -42,7 +42,7 @@ SNSampler : AbstractSNSampler {
 				loopLengths = bufLength ! numBuffers;
 				usedBuffers = false ! numBuffers;
 				server.sync;
-				recorder = NodeProxy.audio(server, 2).pause.play;
+				recorder = NodeProxy.audio(server, numChannels).pause.play;
 				if (numChannels < 2) { inBus = in } { inBus = in ! numChannels };
 				recorder[0] = {
 					var soundIn, rawIn = SoundIn.ar(\in.kr(inBus));
@@ -105,14 +105,19 @@ SNSampler : AbstractSNSampler {
 
 				samplingController.put(\value, { |changer, what|
 					var length, nextBuf, bufIndex, bufnum;
-					isSampling = changer.value;
-					if (isSampling) {
+					isSampling = changer.value[0];
+					changer.value[1] !? { bufnum = changer.value[1] };
+ 					if (isSampling) {
 						"start sampling".postln;
 						onTime = Main.elapsedTime;
 						recorder.resume;
-						bufnum = recorder.get(\bufnum);
+						if (changer.value[1].isNil) {
+							bufnum = recorder.get(\bufnum);
+							// bufnum will be advanced on stop
+							// for the user's convenience store the just used bufnum to a variable
+							lastBufnum = bufnum;
+						};
 						bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
-						[touchOSC, touchOSC.class].postln;
 						if (touchOSC.class === NetAddr) {
 							oscDisplay.(touchOSC, \blink, bufIndex, prefix)
 						};
@@ -147,7 +152,7 @@ SNSampler : AbstractSNSampler {
 						};
 
 						if (touchOSC.class === NetAddr) {
-							oscDisplay.(\written, bufIndex, prefix)
+							oscDisplay.(touchOSC, \written, bufIndex, prefix)
 						};
 
 						recorder.set(\bufnum, buffers[nextBuf].bufnum);
@@ -161,11 +166,11 @@ SNSampler : AbstractSNSampler {
 		}
 	}
 
-	sample { |bool|
+	sample { |bool, bufnum|
 		if (controllerKeys.includes(\value).not) {
 			controllerKeys = controllerKeys.add(\value)
 		};
-		samplingModel.value_(bool).changedKeys(controllerKeys)
+		samplingModel.value_([bool, bufnum]).changedKeys(controllerKeys)
 	}
 
 	reset { |index, doneAction|
@@ -183,8 +188,16 @@ SNSampler : AbstractSNSampler {
 		}, AppClock)
 	}
 
-	setBufnum { |bufnum=0|
+	recBufnum_ { |bufnum=0|
 		recorder.set(\bufnum, bufnum);
+	}
+
+	recBufnum {
+		^recorder.get(\bufnum);
+	}
+
+	inBus_ { |in=0|
+		recorder.set(\in, in);
 	}
 
 	prCreateWidgets {
@@ -231,7 +244,7 @@ SNSampler : AbstractSNSampler {
 		);
 		this.cvCenterAddWidget("-set bufnum", 0, [0, numBuffers - 1, \lin, 1, 0],
 			"{ |cv|
-				CVCenter.scv.samplers['%'].setBufnum(cv.value);
+				CVCenter.scv.samplers['%'].recBufnum_(cv.value);
 			}".format(name)
 		);
 		this.cvCenterAddWidget("-compressor", 0, nil,

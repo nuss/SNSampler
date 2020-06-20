@@ -50,17 +50,26 @@ An link::Classes/Integer::, denoting the input bus. If not given this will defau
 ARGUMENT:: doneAction
 A link::Classes/Function:: denoting the action that should be taken after sampling has been finished.
 
-METHOD:: setBufnum
-Set the link::Classes/Buffer#-bufnum#buffer number:: for the next sample. Incoming sound will be recorded to the buffer denoted by this value. It usually should not be necessary to set the buffer number explicitly - the sampler knows which buffers audio has already been written to and will, as long as empty buffers are still available, automatically choose an empty buffer.
+METHOD:: recBufnum
+Set the link::Classes/Buffer#-bufnum#buffer number:: for the next sample or get the current one (respectively, the one used for the last recording). Incoming sound will be recorded to the buffer denoted by this value. It usually should not be necessary to set the buffer number explicitly - the sampler knows which buffers audio has already been written to and will, as long as empty buffers are still available, automatically choose an empty buffer.
 
 ARGUMENT:: bufnum
 An link::Classes/Integer:: denoting the bufnum.
+
+METHOD:: inBus
+Set or get the input bus for the sampler. This expects an link::Classes/Integer:: or a whole-numbered link::Classes/Float::.
+
+ARGUMENT:: in
+An link::Classes/Integer::, denoting the bus from which to read incoming audio.
 
 METHOD:: sample
 Start or stop sampling. The buffer to which the sampled audio will be written to is either determined by link::#-setBufnum:: or, if that method has not been called in advance, the next buffer number. Sampling will usually start at the lowest buffer number in the array of consecutive buffers that have been allocated in link::#-setupSampler:: or, if link::#-randomBufferSelect:: has been set to code::true:: at a random buffer number.
 
 ARGUMENT:: bool
 A link::Classes/Boolean:: determining whether sampling should be started or stopped.
+
+ARGUMENT:: bufnum
+A link::Classes/Integer::, denoting the link::Classes/Buffer#-bufnum#bufnum:: to which audio shall be recorded. If not provided the sampler will either write to the next available bufnum or use a random bufnum if link::#-randomBufferSelect:: has been set to code::true::.
 
 METHOD:: reset
 Reset one or all buffers. Recorded audio will be reset to zero, the link::#-loopLengths:: will be reset and, if given, code::doneAction:: will be executed.
@@ -88,6 +97,11 @@ Determine whether the next buffer for audio recording should be selected randoml
 
 SUBSECTION:: Introspection
 
+METHOD:: recorder
+The internal link::Classes/NodeProxy:: that is used to read and record incoming audio.
+
+returns:: a link::Classes/NodeProxy::
+
 METHOD:: loopLengths
 As already described buffers within SNSampler have a fixed maximum length. That means, if you write audio to them, buffers will likely not be filled completely. However SNSampler keeps track of the actual length of audio data within each buffer. A length of code::0:: means no audio has been written to the buffer (the whole buffer is filled with zeros) whereas code::1:: means the buffer is filled completely. code::0.5:: means exactly half of the buffer is filled (starting at the beginning of the buffer). The value is simply the ratio of the total buffer length by the length of the recorded audio.
 
@@ -98,91 +112,72 @@ The buffers that have already been written audio to.
 
 returns:: an link::Classes/Array:: of integers, denoting the buffer numbers that already contain recorded audio data
 
+METHOD:: lastBufnum
+When recording is stopped by calling link::#-sample::code::(false):: bufnum will automatically be advanced to the next usable bufnum. The variable code::lastBufnum:: will automatically return the last used bufnum, so the buffer can be played back easily (see example at the bottom).
+
 METHOD:: numChannels
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: init
-(describe method here)
-
-ARGUMENT:: argName
-(describe argument here)
-
-METHOD:: recorder
-(describe method here)
-
-returns:: (describe returnvalue here)
+The number of channels for each Buffer allocated when initializing a new SNSampler. Allocating the buffers is done by calling link::Classes/Buffer#*allocConsecutive:: which only allows setting the same number of channels for all allocated buffers. By default this will be code::1::.
 
 METHOD:: buffers
-(describe method here)
-
-returns:: (describe returnvalue here)
+Returns the array of consecutive buffers, allocated when the SNSampler was initialized.
 
 METHOD:: name
-(describe method here)
-
-returns:: (describe returnvalue here)
-
+The name of the SNSampler. By default this will be code::'Sampler'::.
 
 METHOD:: isSampling
-(describe method here)
-
-returns:: (describe returnvalue here)
+Either code::true:: or code::false::, depending on whether the sampler is currently recording audio.
 
 METHOD:: bufLength
-(describe method here)
-
-returns:: (describe returnvalue here)
+The length of each buffer in the array of consecutive buffers in seconds.
 
 METHOD:: server
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: prCreateWidgets
-(describe method here)
-
-returns:: (describe returnvalue here)
+The link::Classes/Server:: on which the biffer have been allocated.
 
 METHOD:: isSetUp
-(describe method here)
+Return whether the sampler has been fully set up.
 
-returns:: (describe returnvalue here)
-
-METHOD:: inBus
-(describe method here)
-
-returns:: (describe returnvalue here)
+SUBSECTION:: Helpers
 
 METHOD:: setInputCompressor
-(describe method here)
+The input of the sampler may be sent through a comressor before recording it - probably not necessary in many cases but it may help amplifying a very low level signal. Note that this may also create noising. The arguments follow the arguments to a link::Classes/Compander:: ugen, except for code::in::, code::control::, code::mul::, code::add:: which are omitted here.
 
 ARGUMENT:: thresh
-(describe argument here)
+Ampplitude threshold. Default: code::0.5::.
 
 ARGUMENT:: slopeBelow
-(describe argument here)
+Slope of applied amplitude curve if control signal amplitude is below thresh. If > 1.0, the amplitude drops off more quickly the softer the control signal gets; when the control signal is close to 0 amplitude, the output should be exactly zero -- hence, noise gating. Values < 1.0 are possible, but it means that a very low-level control signal will cause the input signal to be amplified, which would raise the noise floor. Default: code::0.03::.
 
 ARGUMENT:: slopeAbove
-(describe argument here)
+Slope of applied amplitude curve if control signal amplitude is above thresh. Values < 1.0 achieve compression (louder signals are attenuated) whereas values > 1.0 expand (louder signals are made even louder). A value of 1/3 achieves a 3:1 compression. Default: code::0.15::.
 
 ARGUMENT:: clampTime
-(describe argument here)
+Time (in seconds) it takes for the amplitude adjustment to kick in fully after the control signal is above thresh. Usually a small value around 10ms (0.01), often set as low as 2ms (0.002). Default: code::0.01::.
 
 ARGUMENT:: relaxTime
-(describe argument here)
+Time (in seconds) for the amplitude adjustment to be released (control signal below thresh). Usually longer than clampTime; depending on the input and control signal, setting both times too short results in (possibly unwanted) artifacts. Default: code::0.23::
 
-returns:: (describe returnvalue here)
-
-METHOD:: numBuffers
-(describe method here)
-
-returns:: (describe returnvalue here)
+PRIVATE:: init, prCreateWidgets
 
 
 EXAMPLES::
 
 code::
-(some example code)
+// create a new sampler with default parameters
+~sampler = SNSampler.new;
+// set up sampler: boot server, create widgets in CVCenter
+// doneAction can be set within setupSampler or later
+(
+~sampler.setupSampler(doneAction: {{
+	PlayBuf.ar(
+		~sampler.numChannels,
+		~sampler.lastBufnum,
+		doneAction: Done.freeSelf
+	)
+}.play });
+)
+// record some audio
+~sampler.sample(true);
+// stop recording
+// recorded audio should be played back immediately
+~sampler.sample(false);
 ::
