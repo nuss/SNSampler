@@ -1,0 +1,203 @@
+TITLE:: SNSamplePlayer
+summary:: A sample looper, allowing to loop samples in various ways.
+categories:: SNSampler
+related:: Classes/SNSampler, Classes/AbstractSNSampler, Classes/CVCenter, Overviews/JITLib
+
+DESCRIPTION::
+Within its built-in looping modes a SNSamplePlayer lets you loop an array of consecutive buffers in such a way that all buffers are spread in the stereo or multichannel panorama. The built-in looping modes basically provide different ways of sequencing - either as audio grains within a link::Classes/Pbind:: or non-granular within a link::Classes/Pmono:: or link::Classes/Ndef::. All these modes will create different output characteristics. However, to make playing most convenient and flexible, they all make use of the wonderful link::Overviews/JITLib:: library, that allows an extremely flexible way of combining different concepts of sequencing and signal processing.
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new SNSampleLooper instance
+
+ARGUMENT:: name
+Optional - a link::Classes/Symbol:: or link::Classes/String::, denoting the name of the new instance. If not given this willdefault to code::\Looper::.
+
+ARGUMENT:: bufLength
+Optional - the maximum length of a single loop in seconds. If not given this will default to code::60::. Often you will want to set this to the length of the buffers stored with an link::Classes/SNSampler::.
+
+ARGUMENT:: mode
+Optional - a link::Classes/Symbol:: or link::Classes/String::, denoting the mode in which to play the looper. As of currently this may be one of the following:
+DEFINITIONLIST::
+## code::\grain:: (default) || loops will be created as link::Classes/Synth:: grains in parallel playing link::Classes/Pbind::s within a link::Classes/Ppar::
+## code::\mono:: || loops will be created in a continously playing link::Classes/Pmono:: within a link::Classes/Ppar::
+## code::\ndef:: || loops will be playing in an link::Classes/Ndef::, using a link::Classes/BufRd::. Looping will be handled by a link::Classes/Phasor::
+::
+
+ARGUMENT:: numOutChannels
+Optional - a link::Classes/Integer::, denoting the number of output channels. The looped buffers will automatically be spread accross all channels. Spreading the output is handled either by a link::Classes/Splay:: (if code::numOutChannels:: is set to code::2::) or a link::Classes/SplayAz:: ugen (for code::numOutChannels:: set to a value greater than code::2::). If not set this defaults to code::2::.
+
+ARGUMENT:: server
+Optional - the link::Classes/Server:: on which to play the looper. If not set this will default to code::Server.default::.
+
+returns:: an SNSamplePlayer instance
+
+METHOD:: all
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+METHOD:: numOutChannels
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: loopLengths
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: resume
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setupPlayer
+(describe method here)
+
+ARGUMENT:: bufferArray
+(describe argument here)
+
+ARGUMENT:: volumeControlNode
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setLoopMaxLength
+(describe method here)
+
+ARGUMENT:: index
+(describe argument here)
+
+ARGUMENT:: length
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: name
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: pause
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: clear
+(describe method here)
+
+ARGUMENT:: fadeTime
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: freeHangingNodes
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: bufLength
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: server
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: debug
+(describe method here)
+
+ARGUMENT:: bool
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: looperPlayer
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: out
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prSetUpControls
+(describe method here)
+
+ARGUMENT:: volumeControl
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: group
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: buffers
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: initDef
+(describe method here)
+
+ARGUMENT:: mode
+(describe argument here)
+
+ARGUMENT:: bufferArray
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: init
+(describe method here)
+
+ARGUMENT:: server
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prSetSpecConstraints
+(describe method here)
+
+ARGUMENT:: index
+(describe argument here)
+
+ARGUMENT:: length
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: play
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: mode
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: prInitPatternPlayer
+(describe method here)
+
+ARGUMENT:: bufferArray
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::

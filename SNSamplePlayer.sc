@@ -11,7 +11,7 @@ SNSamplePlayer : AbstractSNSampler {
 		^super.newCopyArgs(
 			name.asSymbol,
 			bufLength,
-			mode,
+			mode.asSymbol,
 			numOutChannels
 		).init(server);
 	}

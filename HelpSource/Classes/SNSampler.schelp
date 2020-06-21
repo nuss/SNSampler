@@ -63,7 +63,8 @@ ARGUMENT:: in
 An link::Classes/Integer::, denoting the bus from which to read incoming audio.
 
 METHOD:: sample
-Start or stop sampling. The buffer to which the sampled audio will be written to is either determined by link::#-setBufnum:: or, if that method has not been called in advance, the next buffer number. Sampling will usually start at the lowest buffer number in the array of consecutive buffers that have been allocated in link::#-setupSampler:: or, if link::#-randomBufferSelect:: has been set to code::true:: at a random buffer number.
+Start or stop sampling. The buffer to which the sampled audio will be written to is either determined by link::#-setBufnum:: or, if that method has not been called in advance, the next buffer number. Sampling will usually start at the lowest buffer number in the array of consecutive buffers that have been allocated in link::#-setupSampler:: or, if link::#-randomBufferSelect:: has been set to code::true::, at a random buffer number.
+NOTE:: Calling code::sample(false):: will automatically advance the buffer number for the next recording. Hence, if you want to play back the recorded audio after calling code::sample(false)::, rather use link::#-lastBufnum:: than link::#-recBufnum::. (see example at the bottom for a minimal playback setup).::
 
 ARGUMENT:: bool
 A link::Classes/Boolean:: determining whether sampling should be started or stopped.
@@ -164,6 +165,7 @@ EXAMPLES::
 code::
 // create a new sampler with default parameters
 ~sampler = SNSampler.new;
+
 // set up sampler: boot server, create widgets in CVCenter
 // doneAction can be set within setupSampler or later
 (
@@ -175,8 +177,10 @@ code::
 	)
 }.play });
 )
+
 // record some audio
 ~sampler.sample(true);
+
 // stop recording
 // recorded audio should be played back immediately
 ~sampler.sample(false);
