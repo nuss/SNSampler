@@ -34,12 +34,21 @@ Optional - the link::Classes/Server:: on which to play the looper. If not set th
 returns:: an SNSamplePlayer instance
 
 METHOD:: all
-(describe method here)
 
-returns:: (describe returnvalue here)
+returns:: an link::Classes/Event::, holding all current SNSamplePlayer instances
 
 
 INSTANCEMETHODS::
+
+METHOD:: setupPlayer
+Set up the SNSamplePlayer before it can actually be played: Add an link::Classes/Array:: of buffers and define a node for an over-all volume control - setting the volume will be handled in a filter synth (more precisely: a link::Reference/NodeProxy_roles##NodeProxy role:: added to the end of an link::Classes/Ndef::). If not given explicitely the volume control will be created with an ID code::1000::.
+
+ARGUMENT:: bufferArray
+An link::Classes/Array:: of buffers that will be looped in the instance. Often this will be identical with an array of buffers created when setting up an link::Classes/SNSampler::
+
+ARGUMENT:: volumeControlNode
+Optional - an link::Classes/Integer::, denoting the position of the volume control in the chain of synths and filters (defined in an link::Classes/Ndef:: or link::Classes/NodeProxy::).
+NOTE:: This ID is not a regular node ID in the server tree!::
 
 METHOD:: numOutChannels
 (describe method here)
@@ -53,17 +62,6 @@ returns:: (describe returnvalue here)
 
 METHOD:: resume
 (describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: setupPlayer
-(describe method here)
-
-ARGUMENT:: bufferArray
-(describe argument here)
-
-ARGUMENT:: volumeControlNode
-(describe argument here)
 
 returns:: (describe returnvalue here)
 
