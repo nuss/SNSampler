@@ -50,6 +50,60 @@ ARGUMENT:: volumeControlNode
 Optional - an link::Classes/Integer::, denoting the position of the volume control in the chain of synths and filters (defined in an link::Classes/Ndef:: or link::Classes/NodeProxy::).
 NOTE:: This ID is not a regular node ID in the server tree!::
 
+METHOD:: initDef
+Initialize or switch the mode in which the player will play. Available modes will be the ones described in link::#*new::.
+
+ARGUMENT:: mode
+A link::Classes/Symbol:: - either code::\grain::, code::\mono:: or code::\ndef::
+
+ARGUMENT:: bufferArray
+Optional - an array of buffers, initialized with link::Classes/Buffer#*allocConsecutive::. NOTE::The number of buffers must be the same as the number of buffers for which the player was initialized!::
+
+METHOD:: play
+Start playing the SNSamplePlayer. Internally this will start playing the Ndef that keeps the loopers for all buffers. You may inspect the Ndef using an link::Classes/NdefMixer::.
+
+METHOD:: pause
+Pause the player. Internally this will pause the Ndef that keeps the loopers for all buffers.
+
+METHOD:: resume
+Resume a paused player. Internally this will resume the Ndef that keeps the loopers for all buffers.
+
+METHOD:: clear
+Clear the player. This will clear the loopers emphasis::and:: all effects that have been chained to the output of the player. Once an SNSamplePlayer has been cleared it can not be restarted.
+
+ARGUMENT:: fadeTime
+A link::Classes/Float:: or link::Classes/Integer::, determining the fade-out time of the player in seconds.
+
+METHOD:: freeHangingNodes
+When using mode code::\grain:: (the default) it may happen under certain circumstances that grains are not freed properly (they remain on the server, consuming memory). In these cases calling this method will clear all nodes and free memory. Though this may have an audible effect new grains should build up automatically and it will often be preferable to have a short moment of silence than running out of memory.
+
+METHOD:: setLoopMaxLength
+SNSamplePlayer has originally been designed to be used in combination with link::Classes/SNSampler::, allowing you to record sound sequences up to a specified length on the fly. However, sound sequences won't necessarily fill up a whole buffer which means, when looping over the buffer, silence at the end of the buffer will be part of the loop. This method tells the looper how much of the buffer should be used for looping.
+
+The method especially makes sense in combination with the link::Classes/SNSampler#-doneAction#doneAction:: of an link::Classes/SNSampler::. The code::doneAction:: can be passed a numerical code::index:: (the index of the buffer in the array of consecutive buffers for which the maximum loop length shall be set) and the code::length:: of the loop in seconds.
+
+code::
+// ~sampler is an existing instance of an SNSampler
+// ~looper is an existing instrance of an SNSamplePlayer
+~sampler.doneAction_({ |index, length|
+	~looper.setLoopMaxLength(index, length);
+});
+::
+
+ARGUMENT:: index
+An link::Classes/Integer:: or a whole-numbered link::Classes/Float::, denoting the index of the buffer in the array of consecutive buffers.
+
+ARGUMENT:: length
+A link::Classes/Float::, denoting the length of the loop in seconds.
+
+SUBSECTION:: Instance variables
+
+METHOD:: debug
+If set to code::true:: the player will post information on the just played loops to the console.
+
+ARGUMENT:: bool
+A link::Classes/Boolean:: (either code::true:: or code::false::)
+
 METHOD:: numOutChannels
 (describe method here)
 
@@ -60,41 +114,7 @@ METHOD:: loopLengths
 
 returns:: (describe returnvalue here)
 
-METHOD:: resume
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: setLoopMaxLength
-(describe method here)
-
-ARGUMENT:: index
-(describe argument here)
-
-ARGUMENT:: length
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: name
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: pause
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: clear
-(describe method here)
-
-ARGUMENT:: fadeTime
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: freeHangingNodes
 (describe method here)
 
 returns:: (describe returnvalue here)
@@ -106,14 +126,6 @@ returns:: (describe returnvalue here)
 
 METHOD:: server
 (describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: debug
-(describe method here)
-
-ARGUMENT:: bool
-(describe argument here)
 
 returns:: (describe returnvalue here)
 
@@ -145,17 +157,6 @@ METHOD:: buffers
 
 returns:: (describe returnvalue here)
 
-METHOD:: initDef
-(describe method here)
-
-ARGUMENT:: mode
-(describe argument here)
-
-ARGUMENT:: bufferArray
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: init
 (describe method here)
 
@@ -172,11 +173,6 @@ ARGUMENT:: index
 
 ARGUMENT:: length
 (describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: play
-(describe method here)
 
 returns:: (describe returnvalue here)
 
