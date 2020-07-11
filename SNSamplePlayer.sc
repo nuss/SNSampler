@@ -1,6 +1,6 @@
 SNSamplePlayer : AbstractSNSampler {
 	classvar <all;
-	var <name, <bufLength, <>mode, <numOutChannels;
+	var <name, <bufLength, <mode, <numOutChannels;
 	var <>buffers, numBuffers, <group;
 	var <server, <loopLengths;
 	var <debug = false;
@@ -140,10 +140,10 @@ SNSamplePlayer : AbstractSNSampler {
 		looperPlayer = Ndef(looperName);
 	}
 
-	initDef { |mode, bufferArray|
+	initDef { |argMode, bufferArray|
 		var def;
 
-		mode !? { this.mode_(mode) };
+		mode !? { mode = argMode };
 		bufferArray !? {
 			if (bufferArray.size != numBuffers) {
 				Error("The number od buffers passed to initDef must equal numBuffers!").throw;
@@ -152,7 +152,7 @@ SNSamplePlayer : AbstractSNSampler {
 			}
 		};
 
-		switch(this.mode,
+		switch(mode,
 			\grain, {
 				CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
 				CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, 1, looperName);
@@ -324,7 +324,7 @@ SNSamplePlayer : AbstractSNSampler {
 		val[index] = maxval[index]; // end
 		CVCenter.at(endName).value_(val);
 
-		if (this.mode != \ndef) {
+		if (mode != \ndef) {
 			durWdgt = CVCenter.cvWidgets[durName];
 			durCV = CVCenter.at(durName);
 			durSpec = durWdgt.getSpec;
@@ -377,7 +377,7 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	freeHangingNodes {
-		if (this.mode == \grain) {
+		if (mode == \grain) {
 			Ndef(looperName).group.deepFree
 		}
 	}

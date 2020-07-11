@@ -53,7 +53,7 @@ NOTE:: This ID is not a regular node ID in the server tree!::
 METHOD:: initDef
 Initialize or switch the mode in which the player will play. Available modes will be the ones described in link::#*new::.
 
-ARGUMENT:: mode
+ARGUMENT:: argMode
 A link::Classes/Symbol:: - either code::\grain::, code::\mono:: or code::\ndef::
 
 ARGUMENT:: bufferArray
@@ -105,93 +105,78 @@ ARGUMENT:: bool
 A link::Classes/Boolean:: (either code::true:: or code::false::)
 
 METHOD:: numOutChannels
-(describe method here)
+The number of output channels. This is not the same as the number of buffers. Internally each buffers plays to its own channel(s). All buffer channels will then be spread over the panorama either using link::Classes/Splay:: (stereo) or link::Classes/SplayAz:: (code::numOutChannels:: > 2).
 
-returns:: (describe returnvalue here)
+returns:: An link::Classes/Array:: of link::Classes/Integer::s
 
 METHOD:: loopLengths
-(describe method here)
+As eplained in link::#-setLoopMaxLength:: a buffer may be larger than the actual audio that it contains, leaving silence at the end of the buffer. This variable contains the lengths of actually recorded audio in seconds for all buffers as set by link::#-setLoopMaxLength::.
 
-returns:: (describe returnvalue here)
+returns:: An link::Classes/Array:: of link::Classes/Float::
 
 METHOD:: name
-(describe method here)
+The name of the instance as assigned in link::#*new:: (internally converted to a link::Classes/Symbol:: if given as link::Classes/String::).
 
-returns:: (describe returnvalue here)
+returns:: A link::Classes/Symbol::
 
 METHOD:: bufLength
-(describe method here)
+The full length of the buffers as given in link::#*new::. This will not be the same as actual length of audio written to them (see link::#-loopLengths::).
 
-returns:: (describe returnvalue here)
+returns:: A link::Classes/Integer:: or link::Classes/Float::
 
 METHOD:: server
-(describe method here)
-
-returns:: (describe returnvalue here)
+The link::Classes/Server:: on which to play the audio - either explicitely given in link::#*new:: or simply code::Server.default::.
 
 METHOD:: looperPlayer
-(describe method here)
+The link::Classes/Ndef:: that holds the looper as its source. The looper can basically be a link::Classes/Function:: or a link::Classes/Pattern::. If desired the output can be further processed by hooking up link::Reference/NodeProxy_roles::.
 
-returns:: (describe returnvalue here)
+returns:: An link::Classes/Ndef::
 
 METHOD:: out
-(describe method here)
+The link::Classes/Ndef:: that's actually playing to the out channels. The number of channels will be determined by the code::numOutChannels:: argument in link::#*new::. If desired the output can be further processed by hooking up link::Reference/NodeProxy_roles::.
 
-returns:: (describe returnvalue here)
-
-METHOD:: prSetUpControls
-(describe method here)
-
-ARGUMENT:: volumeControl
-(describe argument here)
-
-returns:: (describe returnvalue here)
+returns:: An link::Classes/Ndef::
 
 METHOD:: group
-(describe method here)
+The link::Classes/Group::, respectively link::Classes/ParGroup:: in which the Ndef returned by link::#*out:: will play. If link::Classes/Server#*scsynth#scsynth:: is set engine this will resolve to link::Classes/Group::. If link::Classes/Server#*supernova#supernova:: is used (multicore virtualistaion) a link::Classes/ParGroup:: will be returned. Setting the Ndef to explicit a group allows you to free all contained nodes contained in the group without stopping the player. See link::#-freeHangingNodes:: for further explanation.
 
-returns:: (describe returnvalue here)
+returns:: A link::Classes/Group:: or a link::Classes/ParGroup::
 
 METHOD:: buffers
-(describe method here)
+Get or set the array of consecutive buffers to be looped over.
 
-returns:: (describe returnvalue here)
-
-METHOD:: init
-(describe method here)
-
-ARGUMENT:: server
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: prSetSpecConstraints
-(describe method here)
-
-ARGUMENT:: index
-(describe argument here)
-
-ARGUMENT:: length
-(describe argument here)
-
-returns:: (describe returnvalue here)
+returns:: An link::Classes/Array:: of link::Classes/Buffer::s
 
 METHOD:: mode
-(describe method here)
+The mode to which the SNSamplePlayer has been initialized: code::\grain::, code::\mono:: or code::\ndef::.
 
-returns:: (describe returnvalue here)
+returns:: A link::Classes/Symbol::
 
-METHOD:: prInitPatternPlayer
-(describe method here)
-
-ARGUMENT:: bufferArray
-(describe argument here)
-
-returns:: (describe returnvalue here)
+PRIVATE::init, prSetUpControls, prSetSpecConstraints, prInitPatternPlayer
 
 
 EXAMPLES::
 
 code::
-(some example code)
+// initialize a sampler
+// name = 'Sampler', 5 buffers, buffer length = 60 seconds
+~sampler = SNSampler.new;
+
+// setting up the sampler will automatically allocate the array
+// of consecutive buffers andgenerate controls within CVCenter
+~sampler.setupSampler;
+
+// initialize a player
+// name = 'Looper', buffer length = 60 seconds, mode = 'grain'
+~player = SNSamplePlayer.new;
+
+// set up the player, pass in the buffers to be used
+~player.setupPlayer(~sampler.buffers);
+
+// set a done action, to be executed sampling a sequence is done
+(
+~sampler.doneAction_({ |index, length|
+	~player.setLoopMaxLength(index, length)
+})
+)
 ::
