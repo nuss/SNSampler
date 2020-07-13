@@ -176,7 +176,8 @@ code::
 // set a done action, to be executed sampling a sequence is done
 (
 ~sampler.doneAction_({ |index, length|
-	~player.setLoopMaxLength(index, length)
+	~player.setLoopMaxLength(index, length);
+	~player.resume.play;
 })
 )
 ::

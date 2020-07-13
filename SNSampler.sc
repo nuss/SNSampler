@@ -238,7 +238,6 @@ SNSampler : AbstractSNSampler {
 		);
 		this.cvCenterAddWidget("-in", inBus, \in,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\in, cv.value);
 				CVCenter.scv.samplers['%'].inBus_(cv.value);
 			}".format(name)
 		);
