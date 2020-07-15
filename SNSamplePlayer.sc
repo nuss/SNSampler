@@ -143,7 +143,7 @@ SNSamplePlayer : AbstractSNSampler {
 	initDef { |argMode, bufferArray|
 		var def;
 
-		mode !? { mode = argMode };
+		mode ?? { mode = argMode };
 		bufferArray !? {
 			if (bufferArray.size != numBuffers) {
 				Error("The number od buffers passed to initDef must equal numBuffers!").throw;
@@ -155,19 +155,10 @@ SNSamplePlayer : AbstractSNSampler {
 		switch(mode,
 			\grain, {
 				CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
-				CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, 1, looperName);
+				CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, 1, tab: looperName);
 				CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
-				CVCenter.use((name ++ "Curve").asSymbol, #[-4, 4] ! numBuffers, 0, looperName);
-				CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], 0.1 ! numBuffers, looperName);
-				CVCenter.at((name ++ "Atk").asSymbol) ?? {
-					CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
-				};
-				CVCenter.at((name ++ "Sust").asSymbol) ?? {
-					CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, tab: looperName);
-				};
-				CVCenter.at((name ++ "Rel").asSymbol) ?? {
-					CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
-				};
+				CVCenter.use((name ++ "Curve").asSymbol, #[-4, 4] ! numBuffers, 0, tab: looperName);
+				CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], 0.1 ! numBuffers, tab: looperName);
 
 				def = Pdef(looperName,
 					Ppar({ |i|

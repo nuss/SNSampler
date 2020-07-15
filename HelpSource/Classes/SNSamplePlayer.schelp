@@ -172,12 +172,36 @@ code::
 
 // set up the player, pass in the buffers to be used
 ~player.setupPlayer(~sampler.buffers);
+~player.name; // "Looper"
 
 // set a done action, to be executed sampling a sequence is done
 (
 ~sampler.doneAction_({ |index, length|
+	var maxval;
 	~player.setLoopMaxLength(index, length);
+	// mode is \grain
+	// set the duration spec's maxval according to 'length'
+	maxval = CVCenter.at(\LooperDur).spec.maxval;
+	maxval[index] = length;
+	CVCenter.at(\LooperDur).spec.maxval_(maxval);
+	// start playing
 	~player.resume.play;
 })
 )
+
+// hook a filter chain
+(
+var n = ~player.numOutChannels;
+Spec.add(\mFreq, \freq);
+~player.out[1] = \filter -> { |in|
+	MoogVCF.ar(in, \mFreq.kr(100!n), \mRes.kr(0!n))
+}
+)
+
+// hook up more filters...
+// take care of the index of your filters
+// we started at 1, next one should at least be 2
+// have a look at NodeProxy rules help
+
+~player.out.cvcGui
 ::
