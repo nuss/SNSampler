@@ -30,12 +30,6 @@ SNSamplePlayer : AbstractSNSampler {
 		if (bool) {
 			trace.setSource(
 				Pfunc { |e|
-					// previous = now;
-					// now = TempoClock.beats;
-					// previous !? {
-					// 	diff = now - previous;
-					// };
-					// "diff: %, index: %, bufnum: %, dur: %, start: %, end: %\n".format(diff, e.channelOffset, e.bufnum, e.dur, e.start, e.end)
 					"index: %, bufnum: %, dur: %, start: %, end: %\n".format(e.channelOffset, e.bufnum, e.dur, e.start, e.end)
 				}.trace
 			)

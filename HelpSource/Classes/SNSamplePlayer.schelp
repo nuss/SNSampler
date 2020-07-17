@@ -189,13 +189,18 @@ code::
 })
 )
 
+// start sampling
+~sampler.sample(true);
+// player should replay recorded audio as soon as recording has finished
+~sampler.sample(false);
+
 // hook a filter chain
 // filters can be hooked up to ~player.looperPlayer - filtering each buffer separately
 // or to ~player.out - filter output channels
 // control each channel separately
 (
 var n = ~player.numOutChannels;
-Spec.add(\pRatio, #[0.01, 4]);
+Spec.add(\pRatio, #[0.1, 4]);
 Spec.add(\pDisp, #[0, 4]);
 Spec.add(\pTimeDisp, #[0, 0.2]);
 ~player.out[1] = \filter -> { |in|
