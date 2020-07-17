@@ -117,7 +117,7 @@ SNSamplePlayer : AbstractSNSampler {
 		Ndef(outName)[volumeControl] = \filter -> { |in|
 			in * (name ++ \Amp).asSymbol.kr(1)
 		};
-		Ndef(outName).cvcGui(false, outName, excemptArgs: [\in]);
+		Ndef(outName).cvcGui(false, excemptArgs: [\in]);
 	}
 
 	prInitPatternPlayer { |bufferArray|
