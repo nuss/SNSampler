@@ -87,6 +87,7 @@ SNSampler : AbstractSNSampler {
 					blink ?? {
 						blink = fork({
 							loop {
+								"blink".postln;
 								addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 0);
 								1.wait;
 								addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1);
@@ -96,9 +97,10 @@ SNSampler : AbstractSNSampler {
 					};
 
 					switch(mode)
-					{ \blink } { blink.play }
+					{ \blink } { blink.play(AppClock) }
 					{ \written } {
 						blink.reset.stop;
+						"written".postln;
 						addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1)
 					};
 				};
@@ -203,8 +205,6 @@ SNSampler : AbstractSNSampler {
 	prCreateWidgets {
 		var prefix;
 
-
-
 		CVCenter.scv.samplers ?? {
 			CVCenter.scv.samplers = ();
 		};
@@ -239,12 +239,20 @@ SNSampler : AbstractSNSampler {
 		this.cvCenterAddWidget("-in", inBus, \in,
 			"{ |cv|
 				CVCenter.scv.samplers['%'].inBus_(cv.value);
-			}".format(name)
+				if (CVCenter.scv.samplers['%'].touchOSC.class === NetAddr) {
+					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/set_in_bus\", cv.input);
+					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/in_bus_num\", cv.value.asInteger);
+				}
+			}".format(name, name, name, prefix, name, prefix)
 		);
 		this.cvCenterAddWidget("-set bufnum", 0, [0, numBuffers - 1, \lin, 1, 0],
 			"{ |cv|
 				CVCenter.scv.samplers['%'].recBufnum_(cv.value);
-			}".format(name)
+				if (CVCenter.scv.samplers['%'].touchOSC.class === NetAddr) {
+					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/set_next_samplebuffer\", cv.input);
+					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/next_bufnum\", cv.value.asInteger);
+				}
+			}".format(name, name, name, prefix, name, prefix)
 		);
 		this.cvCenterAddWidget("-compressor", 0, nil,
 			"{ |cv|

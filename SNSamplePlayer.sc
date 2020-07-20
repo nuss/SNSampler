@@ -70,6 +70,64 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	prSetUpControls { |volumeControl|
+		// basic controls: start stop etc.
+		CVCenter.use((name ++ \PauseResume).asSymbol, \false.asSpec, tab: (name ++ \Controls).asSymbol);
+		CVCenter.addActionAt((name ++ \PauseResume).asSymbol, 'looper pause/resume', "{ |cv|
+			if (cv.input.asBoolean) {
+				SNSamplePlayer.all['%'].resume
+			} { SNSamplePlayer.all['%'].pause }
+		}".format(name, name));
+		CVCenter.use((name ++ \Debug).asSymbol, \false.asSpec, tab: (name ++ \Controls).asSymbol);
+		CVCenter.addActionAt((name ++ \Debug).asSymbol, 'debug start/stop', "{ |cv|
+			SNSamplePlayer.all['%'].debug_(cv.input.asBoolean)
+		}".format(name));
+		CVCenter.use((name ++ \FreeNodes).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
+		CVCenter.addActionAt((name ++ \FreeNodes).asSymbol, 'free hanging nodes', "{ |cv|
+		    if (cv.value.asBoolean) {
+				SNSamplePlayer.all['%'].freeHangingNodes;
+		    };
+		}".format(name));
+		CVCenter.use((name ++ \ReinitGrains).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
+		CVCenter.addActionAt((name ++ \ReinitGrains).asSymbol, 'reinit grains', "{ |cv|
+			CVCenter.widgetsAtTab('%').do { |w|
+    			if (CVCenter.cvWidgets[w].respondsTo(\\split)) {
+        			CVCenter.cvWidgets[w].unsplit;
+        			CVCenter.cvWidgets[w].split;
+    			}
+			};
+			SNSamplePlayer.all['%'].initDef;
+		}".format(looperName, name));
+		CVCenter.use((name ++ \ResetSpecs).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
+		CVCenter.addActionAt((name ++ \ResetSpecs).asSymbol, 'reset specs', "{
+			defer {
+				CVCenter.cvWidgets[('%' ++ 'Dur').asSymbol].setSpec(#[0.1, 0.1]);
+				CVCenter.at(('%' ++ 'Dur').asSymbol).value_(0.1!CVCenter.at(('%' ++ 'Dur').asSymbol).size);
+			};
+			defer {
+				CVCenter.cvWidgets[('%' ++ 'End').asSymbol].setSpec(#[0, 1, \lin, 0, 1]);
+				CVCenter.at(('%' ++ 'End').asSymbol).value_(1.0!CVCenter.at(('%' ++ 'End').asSymbol).size);
+			};
+			defer {
+				CVCenter.cvWidgets[('%' ++ 'Rate').asSymbol].setSpec(#[-2, 2, \lin, 0, 1]);
+				CVCenter.at(('%' ++ 'Rate').asSymbol).value_(1.0!CVCenter.at(('%' ++ 'Rate').asSymbol).size);
+			};
+			defer {
+				CVCenter.cvWidgets[('%' ++ 'Start').asSymbol].setSpec;
+				CVCenter.at(('%' ++ 'Start').asSymbol).value_(0.0!CVCenter.at(('%' ++ 'Start').asSymbol).size);
+			};
+			defer {
+				CVCenter.cvWidgets[('%' ++ 'Curve').asSymbol].setSpec(#[-4, 4]);
+				CVCenter.at(('%' ++ 'Curve').asSymbol).value_(-4!CVCenter.at(('%' ++ 'Curve').asSymbol).size);
+			};
+			['Atk', 'Rel'].do { |name|
+				defer {
+					CVCenter.cvWidgets[('%' ++ name).asSymbol].setSpec(#[0.02, 3, \exp]);
+					CVCenter.at(('%' ++ name).asSymbol).value_(0.02!CVCenter.at(('%' ++ name).asSymbol).size);
+				};
+			};
+		}".format(name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name));
+
+		// mode \grain specific - should go into initDef
 		CVCenter.use((name ++ "Start").asSymbol, [0!numBuffers, loopLengths/bufLength], tab: looperName);
 		CVCenter.use((name ++ "End").asSymbol, [0!numBuffers, loopLengths/bufLength], loopLengths/bufLength, looperName);
 		CVCenter.use((name ++ "Rate").asSymbol, #[-2, 2] ! numBuffers, 1.0, tab: looperName);
@@ -84,9 +142,17 @@ SNSamplePlayer : AbstractSNSampler {
 			Ndef(outName).group_(ParGroup.new)
 		};
 
+		// add spec for channel amplitude control
+		Spec.add((name ++ \ChanAmp).asSymbol, \amp);
+
 		if (numOutChannels <= 2) {
 			Ndef(outName)[0] = {
-				Splay.ar(\in.ar(0 ! numBuffers), (name ++ \Spread).asSymbol.kr(0.5), 1, (name ++ \Center).asSymbol.kr(0.0))
+				Splay.ar(
+					\in.ar(0 ! numBuffers),
+					(name ++ \Spread).asSymbol.kr(0.5),
+					1,
+					(name ++ \Center).asSymbol.kr(0.0)
+				) * (name ++ \ChanAmp).asSymbol.kr(1!numOutChannels)
 			}
 		} {
 			Ndef(outName)[0] = {
@@ -98,7 +164,7 @@ SNSamplePlayer : AbstractSNSampler {
 					(name ++ \Width).asSymbol.kr(2),
 					(name ++ \Center).asSymbol.kr(0.0),
 					(name ++ \Orientation).asSymbol.kr(0.0)
-				)
+				) * (name ++ \ChanAmp).asSymbol.kr(1!numOutChannels)
 			}
 		};
 
@@ -109,6 +175,7 @@ SNSamplePlayer : AbstractSNSampler {
 
 		Ndef(outName) <<> Ndef(looperName);
 		Ndef(outName)[volumeControl] = \filter -> { |in|
+			// global amplitude over all channels
 			in * (name ++ \Amp).asSymbol.kr(1)
 		};
 		Ndef(outName).cvcGui(false, excemptArgs: [\in]);

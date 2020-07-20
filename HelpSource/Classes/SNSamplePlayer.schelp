@@ -181,7 +181,7 @@ code::
 ~player.out; // the actual output - all buffer channels mixed down to the specified number of outs
 ~player.out.numChannels; // 2 - the same as ~player.numOutChannels
 
-// set a done action, to be executed sampling a sequence is done
+// set a done action, to be executed when sampling a sequence is done
 (
 ~sampler.doneAction_({ |index, length|
 	~player.setLoopMaxLength(index, length);

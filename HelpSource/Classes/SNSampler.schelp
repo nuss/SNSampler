@@ -185,3 +185,5 @@ code::
 // recorded audio should be played back immediately
 ~sampler.sample(false);
 ::
+
+For a more complex example have a look at link::Classes/SNSamplePlayer::.
