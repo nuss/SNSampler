@@ -28,7 +28,7 @@ Optional - the link::Classes/Server:: on which to allocate the audio buffers. If
 
 ARGUMENT:: touchOSC
 Optional - a link::Classes/NetAddr:: under which an installation of the popular TouchOSC OSC controller is running.
-NOTE:: The address will be used to send feedback to TouchOSC, so you emphasis::must:: provide the port under which TouchOSC expects to emphasis::receive:: OSC messages!::
+NOTE:: The address will be used to send feedback to TouchOSC, so you emphasis::must:: provide the port under which TouchOSC expects to emphasis::receive:: OSC messages! Also, some of the widgets in CVCenter will automatically be connected, based on the IP address provided with the NetAddress. For this to work properly all elements in the TouchOSC interface (provided as layout file with SNSampler) need to be normalized, i.e. their output range must be 0.0-1.0.::
 
 ARGUMENT:: touchOSCPanel
 Optional - TouchOSC's user interface can be organized in a number of panels. Panels are numbered, biginning from one. This is also reflected in TouchOSC's commandname structure. E.g. code::/1/toggle:: could be a toggle button on TouchOSC's first panel. If not given this will default to code::1::.

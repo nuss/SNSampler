@@ -226,16 +226,18 @@ SNSampler : AbstractSNSampler {
 						CVCenter.scv.samplers['%'].reset(%)
 					}
 				}".format(name, name, name, prefix, i, name, i)
-			)
+			).oscConnect(touchOSC.ip, nil, "%/sampler_zero_buffer_%".format(prefix, i))
+			.setOscInputConstraints(Point(0, 1));
 		};
 		this.cvCenterAddWidget("-resetAll", 0, #[0, 1, \lin, 1],
 			"{ |cv| CVCenter.scv.samplers['%'].reset }".format(name),
 			midiMode: 0, softWithin: 0
-		);
+		).oscConnect(touchOSC.ip, nil, "%/reset_all_samples".format(prefix))
+		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-start/stop", 0, #[0, 1, \lin, 1, 0],
 			"{ |cv| CVCenter.scv.samplers['%'].sample(cv.input.booleanValue) }".format(name),
 			midiMode: 0, softWithin: 0
-		);
+		); // no button defined within the TouchOSC interface
 		this.cvCenterAddWidget("-in", inBus, \in,
 			"{ |cv|
 				CVCenter.scv.samplers['%'].inBus_(cv.value);
@@ -244,7 +246,8 @@ SNSampler : AbstractSNSampler {
 					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/in_bus_num\", cv.value.asInteger);
 				}
 			}".format(name, name, name, prefix, name, prefix)
-		);
+		).oscConnect(touchOSC.ip, nil, "%/set_in_bus".format(prefix))
+		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-set bufnum", 0, [0, numBuffers - 1, \lin, 1, 0],
 			"{ |cv|
 				CVCenter.scv.samplers['%'].recBufnum_(cv.value);
@@ -253,13 +256,16 @@ SNSampler : AbstractSNSampler {
 					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/next_bufnum\", cv.value.asInteger);
 				}
 			}".format(name, name, name, prefix, name, prefix)
-		);
+		).oscConnect(touchOSC.ip, nil, "%/set_next_samplebuffer".format(prefix))
+		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-compressor", 0, nil,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\compress, cv.value)
-			}".format(name),
+				CVCenter.scv.samplers['%'].recorder.set(\\compress, cv.value);
+				CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/sample_compressor_amp\", cv.input);
+			}".format(name, name, prefix),
 			midiMode: 0, softWithin: 0
-		);
+		).oscConnect(touchOSC.ip, nil, "%/sample_compressor_amp".format(prefix))
+		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-compThresh", 0.5, nil,
 			"{ |cv|
 				CVCenter.scv.samplers['%'].recorder.set(\\compThresh, cv.value)
@@ -292,10 +298,12 @@ SNSampler : AbstractSNSampler {
 		);
 		this.cvCenterAddWidget("-bypass-amp", 0.0, \amp,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\bypassAmp, cv.value)
-			}".format(name),
+				CVCenter.scv.samplers['%'].recorder.set(\\bypassAmp, cv.value);
+				CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/sampler_bypass\", cv.input);
+			}".format(name, name, prefix),
 			midiMode: 0, softWithin: 0
-		);
+		).oscConnect(touchOSC.ip, nil, "%/sampler_bypass".format(prefix))
+		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-setCompressor", 0, #[0, 1, \lin, 1],
 			"{ |cv|
 				CVCenter.scv.samplers['%'].setInputCompressor
