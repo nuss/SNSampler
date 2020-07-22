@@ -1,18 +1,20 @@
 SNSamplePlayer : AbstractSNSampler {
 	classvar <all;
-	var <name, <bufLength, <mode, <numOutChannels;
+	var <name, <bufLength, <mode, <numOutChannels, <>touchOSC, <>touchOSCPanel;
 	var <>buffers, numBuffers, <group;
 	var <server, <loopLengths;
 	var <debug = false;
 	var looperName, outName, <looperPlayer, <out;
 	var trace;
 
-	*new { |name=\Looper, bufLength=60, mode=\grain, numOutChannels=2, server|
+	*new { |name=\Looper, bufLength=60, mode=\grain, numOutChannels=2, server, touchOSC, touchOSCPanel=1|
 		^super.newCopyArgs(
 			name.asSymbol,
 			bufLength,
 			mode.asSymbol,
-			numOutChannels
+			numOutChannels,
+			touchOSC,
+			touchOSCPanel
 		).init(server);
 	}
 
@@ -70,23 +72,53 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	prSetUpControls { |volumeControl|
+		var prefix;
+
+		if (touchOSCPanel.notNil) {
+			prefix = "/" ++ touchOSCPanel;
+		} {
+			prefix = "";
+		};
+
 		// basic controls: start stop etc.
 		CVCenter.use((name ++ \PauseResume).asSymbol, \false.asSpec, tab: (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \PauseResume).asSymbol, 'looper pause/resume', "{ |cv|
 			if (cv.input.asBoolean) {
 				SNSamplePlayer.all['%'].resume
-			} { SNSamplePlayer.all['%'].pause }
-		}".format(name, name));
+			} { SNSamplePlayer.all['%'].pause };
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_pause_resume\", cv.input)
+				}
+			}
+		}".format(name, name, name, name, name, prefix));
+		CVCenter.cvWidgets[(name ++ \PauseResume).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_pause_resume".format(prefix)).setOscInputConstraints(Point(0, 1));
+
 		CVCenter.use((name ++ \Debug).asSymbol, \false.asSpec, tab: (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \Debug).asSymbol, 'debug start/stop', "{ |cv|
-			SNSamplePlayer.all['%'].debug_(cv.input.asBoolean)
-		}".format(name));
+			SNSamplePlayer.all['%'].debug_(cv.input.asBoolean);
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_debug\", cv.input)
+				}
+			}
+		}".format(name, name, name, name, prefix));
+		CVCenter.cvWidgets[(name ++ \Debug).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_debug".format(prefix)).setOscInputConstraints(Point(0, 1));
+
 		CVCenter.use((name ++ \FreeNodes).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \FreeNodes).asSymbol, 'free hanging nodes', "{ |cv|
 		    if (cv.value.asBoolean) {
 				SNSamplePlayer.all['%'].freeHangingNodes;
 		    };
-		}".format(name));
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/free_hanging_nodes\", cv.input)
+				}
+			}
+		}".format(name, name, name, name, prefix));
+		CVCenter.cvWidgets[(name ++ \FreeNodes).asSymbol].oscConnect(touchOSC.ip, nil, "%/free_hanging_nodes".format(prefix)).setOscInputConstraints(Point(0, 1));
+
+		// FIXME
 		CVCenter.use((name ++ \ReinitGrains).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \ReinitGrains).asSymbol, 'reinit grains', "{ |cv|
 			CVCenter.widgetsAtTab('%').do { |w|
@@ -96,9 +128,16 @@ SNSamplePlayer : AbstractSNSampler {
     			}
 			};
 			SNSamplePlayer.all['%'].initDef;
-		}".format(looperName, name));
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_reinit_grains\", cv.input)
+				}
+			}
+		}".format(looperName, name, name, name, name, prefix));
+		CVCenter.cvWidgets[(name ++ \ReinitGrains).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_reinit_grains".format(prefix)).setOscInputConstraints(Point(0, 1));
+
 		CVCenter.use((name ++ \ResetSpecs).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
-		CVCenter.addActionAt((name ++ \ResetSpecs).asSymbol, 'reset specs', "{
+		CVCenter.addActionAt((name ++ \ResetSpecs).asSymbol, 'reset specs', "{ |cv|
 			defer {
 				CVCenter.cvWidgets[('%' ++ 'Dur').asSymbol].setSpec(#[0.1, 0.1]);
 				CVCenter.at(('%' ++ 'Dur').asSymbol).value_(0.1!CVCenter.at(('%' ++ 'Dur').asSymbol).size);
@@ -125,7 +164,30 @@ SNSamplePlayer : AbstractSNSampler {
 					CVCenter.at(('%' ++ name).asSymbol).value_(0.02!CVCenter.at(('%' ++ name).asSymbol).size);
 				};
 			};
-		}".format(name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name));
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_reset_specs\", cv.input)
+				}
+			}
+		}".format(name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, prefix));
+		CVCenter.cvWidgets[(name ++ \ResetSpecs).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_reset_specs".format(prefix)).setOscInputConstraints(Point(0, 1));
+
+		CVCenter.use((name ++ \ChanAmps).asSymbol, \amp ! numOutChannels, 1.0, tab: (name ++ \Out).asSymbol);
+		CVCenter.addActionAt((name ++ \ChanAmps).asSymbol, 'set channel amps', "{ |cv|
+			SNSamplePlayer.all['%'].out.set((SNSamplePlayer.all['%'].name ++ 'ChanAmp').asSymbol, cv.value);
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].numOutChannels.do { |i|
+						SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_chan_amps/\" ++ (i+1), cv.input[i])
+					}
+				}
+			}
+		}".format(name, name, name, name, name, name, prefix));
+		numOutChannels.do { |i|
+			CVCenter.cvWidgets[(name ++ \ChanAmps).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_chan_amps/%".format(prefix, i+1), slot: i)
+			.setOscInputConstraints(Point(0, 1), i);
+		};
+		// TODO: add widget for channel amplitudes
 
 		// mode \grain specific - should go into initDef
 		CVCenter.use((name ++ "Start").asSymbol, [0!numBuffers, loopLengths/bufLength], tab: looperName);
