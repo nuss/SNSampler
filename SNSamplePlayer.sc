@@ -172,9 +172,9 @@ SNSamplePlayer : AbstractSNSampler {
 		}".format(name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, prefix));
 		CVCenter.cvWidgets[(name ++ \ResetSpecs).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_reset_specs".format(prefix)).setOscInputConstraints(Point(0, 1));
 
-		CVCenter.use((name ++ \ChanAmps).asSymbol, \amp ! numOutChannels, 1.0, tab: (name ++ \Out).asSymbol);
+		CVCenter.use((name ++ \ChanAmps).asSymbol, \amp ! numOutChannels, 1.0, (name ++ \Out).asSymbol);
 		CVCenter.addActionAt((name ++ \ChanAmps).asSymbol, 'set channel amps', "{ |cv|
-			SNSamplePlayer.all['%'].out.set((SNSamplePlayer.all['%'].name ++ 'ChanAmp').asSymbol, cv.value);
+			SNSamplePlayer.all['%'].out.set('chanAmps', cv.value);
 			SNSamplePlayer.all['%'].touchOSC !? {
 				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
 					SNSamplePlayer.all['%'].numOutChannels.do { |i|
@@ -182,12 +182,72 @@ SNSamplePlayer : AbstractSNSampler {
 					}
 				}
 			}
-		}".format(name, name, name, name, name, name, prefix));
+		}".format(name, name, name, name, name, prefix));
 		numOutChannels.do { |i|
 			CVCenter.cvWidgets[(name ++ \ChanAmps).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_chan_amps/%".format(prefix, i+1), slot: i)
 			.setOscInputConstraints(Point(0, 1), i);
 		};
-		// TODO: add widget for channel amplitudes
+
+		// TouchOSC fader expected on panel 2
+		CVCenter.use((name ++ \Amp).asSymbol, \amp, 1.0, (name ++ \Out).asSymbol);
+		CVCenter.addActionAt((name ++ \Amp).asSymbol, 'looper out volume', "{ |cv|
+			SNSamplePlayer.all['%'].out.set(('%' ++ 'Amp').asSymbol, cv.value);
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_out_volume\", cv.input)
+				}
+			}
+		}".format(name, name, name, name, name, "/" ++ (touchOSCPanel.asInteger + 1)));
+		CVCenter.cvWidgets[(name ++ \Amp).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_out_volume".format("/" ++ (touchOSCPanel.asInteger + 1)))
+		.setOscInputConstraints(Point(0, 1));
+
+		// TouchOSC fader expected on panel 2
+		CVCenter.use((name ++ \AmpWet).asSymbol, nil, 1.0, (name ++ \Out).asSymbol);
+		CVCenter.addActionAt((name ++ \AmpWet), 'amp dry/wet', "{ |cv|
+			SNSamplePlayer.all['%'].out.set(('wet' ++ %).asSymbol, cv.value);
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_out_volume_dry_wet\", cv.input)
+				}
+			}
+		}".format(name, volumeControl.asInteger, name, name, name, "/" ++ (touchOSCPanel.asInteger + 1)));
+		CVCenter.cvWidgets[(name ++ \AmpWet).asSymbol].oscConnect(touchOSC.ip, nil, "/%/looper_out_volume_dry_wet".format(touchOSCPanel.asInteger + 1))
+		.setOscInputConstraints(Point(0, 1));
+
+		// TouchOSC rotary expected on panel 2
+		CVCenter.use((name ++ \Center).asSymbol, \pan, tab: (name ++ \Out).asSymbol);
+		// update rotary on panel 2 AND slider on panel 1
+		CVCenter.addActionAt((name ++ \Center).asSymbol, 'set center', "{ |cv|
+			SNSamplePlayer.all['%'].out.set('center', cv.value);
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_center_rotary\", cv.input)
+					.sendMsg(\"%/looper_out_center\", cv.input)
+				}
+			}
+		}".format(name, name, name, name, "/" ++ (touchOSCPanel.asInteger + 1), prefix));
+		CVCenter.cvWidgets[(name ++ \Center).asSymbol].oscConnect(touchOSC.ip, nil, "/%/looper_center_rotary".format(touchOSCPanel.asInteger + 1))
+		.setOscInputConstraints(Point(0, 1));
+
+		// TouchOSC rotary expected on panel 2
+		CVCenter.use((name ++ \Spread).asSymbol, nil, tab: (name ++ \Out).asSymbol);
+		// update rotary on panel 2 AND slider on panel 1
+		CVCenter.addActionAt((name ++ \Spread).asSymbol, 'set spread', "{ |cv|
+			SNSamplePlayer.all['%'].out.set('spread', cv.value);
+			SNSamplePlayer.all['%'].touchOSC !? {
+				if (SNSamplePlayer.all['%'].touchOSC.class === NetAddr) {
+					SNSamplePlayer.all['%'].touchOSC.sendMsg(\"%/looper_spread_rotary\", cv.input)
+					.sendMsg(\"%/looper_out_spread\", cv.input)
+				}
+			}
+		}".format(name, name, name, name, "/" ++ (touchOSCPanel.asInteger + 1), prefix));
+		CVCenter.cvWidgets[(name ++ \Spread).asSymbol].oscConnect(touchOSC.ip, nil, "/%/looper_spread_rotary".format(touchOSCPanel.asInteger + 1))
+		.setOscInputConstraints(Point(0, 1));
+
+		// if numOutChannels > 2 SplayAz is used nstead of Splay
+		/*if (numOutChannels > 2) {
+			CVCenter.use((name ++ \Width).asSymbol, )
+		}*/
 
 		// mode \grain specific - should go into initDef
 		CVCenter.use((name ++ "Start").asSymbol, [0!numBuffers, loopLengths/bufLength], tab: looperName);
@@ -211,22 +271,22 @@ SNSamplePlayer : AbstractSNSampler {
 			Ndef(outName)[0] = {
 				Splay.ar(
 					\in.ar(0 ! numBuffers),
-					(name ++ \Spread).asSymbol.kr(0.5),
+					\spread.kr(0.5),
 					1,
-					(name ++ \Center).asSymbol.kr(0.0)
-				) * (name ++ \ChanAmp).asSymbol.kr(1!numOutChannels)
+					\center.kr(0.0)
+				) * \chanAmps.kr(1!numOutChannels)
 			}
 		} {
 			Ndef(outName)[0] = {
 				SplayAz.ar(
 					numOutChannels,
 					\in.ar(0 ! numBuffers),
-					(name ++ \Spread).asSymbol.kr(0.5),
+					\spread.kr(0.5),
 					1,
-					(name ++ \Width).asSymbol.kr(2),
-					(name ++ \Center).asSymbol.kr(0.0),
-					(name ++ \Orientation).asSymbol.kr(0.0)
-				) * (name ++ \ChanAmp).asSymbol.kr(1!numOutChannels)
+					\width.kr(2),
+					\center.kr(0.0),
+					\orientation.kr(0.0)
+				) * \chanAmps.kr(1!numOutChannels)
 			}
 		};
 
@@ -238,9 +298,9 @@ SNSamplePlayer : AbstractSNSampler {
 		Ndef(outName) <<> Ndef(looperName);
 		Ndef(outName)[volumeControl] = \filter -> { |in|
 			// global amplitude over all channels
-			in * (name ++ \Amp).asSymbol.kr(1)
+			in * \amp.kr(1)
 		};
-		Ndef(outName).cvcGui(false, excemptArgs: [\in]);
+		// Ndef(outName).cvcGui(false, excemptArgs: [\in]);
 	}
 
 	prInitPatternPlayer { |bufferArray|
