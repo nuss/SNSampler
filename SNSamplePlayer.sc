@@ -178,13 +178,13 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.addActionAt((name ++ \ChanAmps).asSymbol, 'set channel amps', "{ |cv|
 			var player = SNSamplePlayer.all['%'],
 				osc = player.touchOSC;
-			player.out.set('chanAmps', cv.value);
+			player.out.set(('%' ++ 'ChanAmps').asSymbol, cv.value);
 			if (osc.notNil and: { osc.class === NetAddr }) {
 				player.numOutChannels.do { |i|
 					osc.sendMsg(\"%/looper_chan_amps/\" ++ (i+1), cv.input[i])
 				}
 			}
-		}".format(name, prefix));
+		}".format(name, name, prefix));
 		numOutChannels.do { |i|
 			CVCenter.cvWidgets[(name ++ \ChanAmps).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_chan_amps/%".format(prefix, i+1), slot: i)
 			.setOscInputConstraints(Point(0, 1), i);
@@ -236,11 +236,11 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.addActionAt((name ++ \Spread).asSymbol, 'set spread', "{ |cv|
 			var player = SNSamplePlayer.all['%'],
 				osc = player.touchOSC;
-			player.out.set('spread', cv.value);
+			player.out.set(('%' ++ 'Spread').asSymbol, cv.value);
 			if (osc.notNil and: { osc.class === NetAddr }) {
 				osc.sendMsg(\"%/looper_spread_rotary\", cv.input)
 			}
-		}".format(name, prefix));
+		}".format(name, name, prefix));
 		CVCenter.cvWidgets[(name ++ \Spread).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_spread_rotary".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
 
@@ -250,24 +250,24 @@ SNSamplePlayer : AbstractSNSampler {
 			CVCenter.addActionAt((name ++ \Width).asSymbol, 'set width', "{ |cv|
 				var player = SNSamplePlayer.all['%'],
 					osc = player.touchOSC;
-				player.out.set('width', cv.value);
+				player.out.set(('%' ++ 'Width').asSymbol, cv.value);
 				if (osc.notNil and: { osc.class === NetAddr }) {
 					osc.sendMsg(\"%/looper_width_rotary\", cv.input)
 				}
-			}".format(name, prefix));
-			CVCenter.cvWidgets[(name ++ \width)].oscConnect(touchOSC.ip, nil, "%/looper_width_rotary".format(prefix))
+			}".format(name, name, prefix));
+			CVCenter.cvWidgets[(name ++ \Width)].oscConnect(touchOSC.ip, nil, "%/looper_width_rotary".format(prefix))
 			.setOscInputConstraints(Point(0, 1));
 
 			CVCenter.use((name ++ \Orientation).asSymbol, #[1, numOutChannels], 2, (name ++ \Out).asSymbol);
 			CVCenter.addActionAt((name ++ \Orientation).asSymbol, 'set orientation', "{ |cv|
 				var player = SNSamplePlayer.all['%'],
 					osc = player.touchOSC;
-				player.out.set('orientation', cv.value);
+				player.out.set(('%' ++ 'Orientation').asSymbol, cv.value);
 				if (osc.notNil and: { osc.class === NetAddr }) {
 					osc.sendMsg(\"%/looper_orientation_rotary\", cv.input)
 				}
 			}".format(name, prefix));
-			CVCenter.cvWidgets[(name ++ \orientation)].oscConnect(touchOSC.ip, nil, "%/looper_orientation_rotary".format(prefix))
+			CVCenter.cvWidgets[(name ++ \Orientation)].oscConnect(touchOSC.ip, nil, "%/looper_orientation_rotary".format(prefix))
 			.setOscInputConstraints(Point(0, 1));
 		};
 
@@ -290,22 +290,22 @@ SNSamplePlayer : AbstractSNSampler {
 			Ndef(outName)[0] = {
 				Splay.ar(
 					\in.ar(0 ! numBuffers),
-					\spread.kr(0.5),
+					(name ++ \Spread).asSymbol.kr(0.5),
 					1,
-					\center.kr(0.0)
-				) * \chanAmps.kr(1!numOutChannels)
+					(name ++ \Center).asSymbol.kr(0.0)
+				) * (name ++ \ChanAmps).asSymbol.kr(1!numOutChannels)
 			}
 		} {
 			Ndef(outName)[0] = {
 				SplayAz.ar(
 					numOutChannels,
 					\in.ar(0 ! numBuffers),
-					\spread.kr(0.5),
+					(name ++ \Spread).asSymbol.kr(0.5),
 					1,
-					\width.kr(2),
-					\center.kr(0.0),
-					\orientation.kr(0.0)
-				) * \chanAmps.kr(1!numOutChannels)
+					(name ++ \Width).asSymbol.kr(2),
+					(name ++ \Center).asSymbol.kr(0.0),
+					(name ++ \Orientation).asSymbol.kr(0.0)
+				) * (name ++ \ChanAmps).asSymbol.kr(1!numOutChannels)
 			}
 		};
 
@@ -314,7 +314,7 @@ SNSamplePlayer : AbstractSNSampler {
 		Ndef(outName) <<> Ndef(looperName);
 		Ndef(outName)[volumeControl] = \filter -> { |in|
 			// global amplitude over all channels
-			in * \amp.kr(1)
+			in * (name ++ \Amp).asSymbol.kr(1)
 		};
 		// Ndef(outName).cvcGui(false, excemptArgs: [\in]);
 	}

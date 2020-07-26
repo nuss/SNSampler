@@ -34,6 +34,7 @@ SNSampler : AbstractSNSampler {
 
 	setupSampler { |in=0, doneAction|
 		var oscDisplay, prefix;
+		var samplingLocked = false;
 
 		doneAction !? { this.doneAction_(doneAction) };
 		if (isSetUp.not) {
@@ -87,7 +88,7 @@ SNSampler : AbstractSNSampler {
 					blink ?? {
 						blink = fork({
 							loop {
-								"blink".postln;
+								// "blink".postln;
 								addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 0);
 								1.wait;
 								addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1);
@@ -100,66 +101,73 @@ SNSampler : AbstractSNSampler {
 					{ \blink } { blink.play(AppClock) }
 					{ \written } {
 						blink.reset.stop;
-						"written".postln;
+						// "written".postln;
 						addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1)
 					};
 				};
 
 				samplingController.put(\value, { |changer, what|
 					var length, nextBuf, bufIndex, bufnum;
+
 					isSampling = changer.value[0];
 					changer.value[1] !? { bufnum = changer.value[1] };
  					if (isSampling) {
-						"start sampling".postln;
-						onTime = Main.elapsedTime;
-						recorder.resume;
-						if (changer.value[1].isNil) {
-							bufnum = recorder.get(\bufnum);
-							// bufnum will be advanced on stop
-							// for the user's convenience store the just used bufnum to a variable
-							lastBufnum = bufnum;
-						};
-						bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
-						if (touchOSC.class === NetAddr) {
-							oscDisplay.(touchOSC, \blink, bufIndex, prefix)
-						};
+						if (samplingLocked.not) {
+							"start sampling".postln;
+							onTime = Main.elapsedTime;
+							recorder.resume;
+							if (changer.value[1].isNil) {
+								bufnum = recorder.get(\bufnum);
+								// bufnum will be advanced on stop
+								// for the user's convenience store the just used bufnum to a variable
+								lastBufnum = bufnum;
+							};
+							bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
+							if (touchOSC.class === NetAddr) {
+								oscDisplay.(touchOSC, \blink, bufIndex, prefix)
+							};
+							samplingLocked = true;
+						}
 					} {
 						var amps, durs, ends;
-						offTime = Main.elapsedTime;
-						recorder.pause;
-						// reset phasor before next sampling
-						recorder.set(\trig, 1);
-						bufnum = recorder.get(\bufnum);
-						// bufffers may begin with other bufnums than 0,
-						// so we use the index in the buffers array
-						bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
-						usedBuffers[bufIndex] = true;
-						// reset if all buffers have been filled already
-						if (usedBuffers.select { |bool| bool == true }.size == numBuffers) {
-							usedBuffers = false ! numBuffers;
-						};
-						length = offTime - onTime;
-						(length < 0.1).if { length = 0.1 };
-						"stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
-						if (length > bufLength) {
-							loopLengths[bufIndex] = bufLength;
-						} {
-							loopLengths[bufIndex] = length;
-						};
-						this.doneAction.value(bufIndex, loopLengths[bufIndex]);
-						if (this.randomBufferSelect.not) {
-							nextBuf = bufIndex + 1 % numBuffers;
-						} {
-							nextBuf = usedBuffers.selectIndex{ |bool| bool == false }.choose;
-						};
+						if (samplingLocked) {
+							offTime = Main.elapsedTime;
+							recorder.pause;
+							// reset phasor before next sampling
+							recorder.set(\trig, 1);
+							bufnum = recorder.get(\bufnum);
+							// bufffers may begin with other bufnums than 0,
+							// so we use the index in the buffers array
+							bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
+							usedBuffers[bufIndex] = true;
+							// reset if all buffers have been filled already
+							if (usedBuffers.select { |bool| bool == true }.size == numBuffers) {
+								usedBuffers = false ! numBuffers;
+							};
+							length = offTime - onTime;
+							(length < 0.1).if { length = 0.1 };
+							"stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
+							if (length > bufLength) {
+								loopLengths[bufIndex] = bufLength;
+							} {
+								loopLengths[bufIndex] = length;
+							};
+							this.doneAction.value(bufIndex, loopLengths[bufIndex]);
+							if (this.randomBufferSelect.not) {
+								nextBuf = bufIndex + 1 % numBuffers;
+							} {
+								nextBuf = usedBuffers.selectIndex{ |bool| bool == false }.choose;
+							};
 
-						if (touchOSC.class === NetAddr) {
-							oscDisplay.(touchOSC, \written, bufIndex, prefix)
-						};
+							if (touchOSC.class === NetAddr) {
+								oscDisplay.(touchOSC, \written, bufIndex, prefix)
+							};
 
-						recorder.set(\bufnum, buffers[nextBuf].bufnum);
-						CVCenter.at((name ++ "-set bufnum").asSymbol).value_(nextBuf);
-						onTime = nil;
+							recorder.set(\bufnum, buffers[nextBuf].bufnum);
+							CVCenter.at((name ++ "-set bufnum").asSymbol).value_(nextBuf);
+							onTime = nil;
+							samplingLocked = false;
+						}
 					}
 				})
 			}
@@ -205,11 +213,6 @@ SNSampler : AbstractSNSampler {
 	prCreateWidgets {
 		var prefix;
 
-		CVCenter.scv.samplers ?? {
-			CVCenter.scv.samplers = ();
-		};
-		CVCenter.scv.samplers.put(name, this);
-
 		if (touchOSCPanel.notNil) {
 			prefix = "/" ++ touchOSCPanel;
 		} {
@@ -219,95 +222,123 @@ SNSampler : AbstractSNSampler {
 		numBuffers.do { |i|
 			this.cvCenterAddWidget("-buf%reset".format(i), 0, #[0, 1, \lin, 1],
 				"{ |cv|
-					CVCenter.scv.samplers['%'].touchOSC !? {
-						if (CVCenter.scv.samplers['%'].touchOSC.class === NetAddr) {
-							CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/sample_buf_%\", 0);
-						};
-						CVCenter.scv.samplers['%'].reset(%)
-					}
-				}".format(name, name, name, prefix, i, name, i)
+					var sampler = SNSampler.all['%'],
+						osc = sampler.touchOSC;
+					if (osc.notNil and: { osc.class === NetAddr }) {
+						osc.sendMsg(\"%/sample_buf_%\", 0);
+					};
+					sampler.reset(%);
+				}".format(name, prefix, i, i),
+				(name ++ \Sampler).asSymbol
 			).oscConnect(touchOSC.ip, nil, "%/sampler_zero_buffer_%".format(prefix, i))
 			.setOscInputConstraints(Point(0, 1));
 		};
 		this.cvCenterAddWidget("-resetAll", 0, #[0, 1, \lin, 1],
-			"{ |cv| CVCenter.scv.samplers['%'].reset }".format(name),
+			"{ |cv| SNSampler.all['%'].reset }".format(name),
+			(name ++ \Sampler).asSymbol,
 			midiMode: 0, softWithin: 0
 		).oscConnect(touchOSC.ip, nil, "%/reset_all_samples".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-start/stop", 0, #[0, 1, \lin, 1, 0],
-			"{ |cv| CVCenter.scv.samplers['%'].sample(cv.input.booleanValue) }".format(name),
+			"{ |cv|
+				var sampler = SNSampler.all['%'],
+					osc = sampler.touchOSC;
+				sampler.sample(cv.input.booleanValue);
+				if (osc.notNil and: { osc.class === NetAddr }) {
+					osc.sendMsg(\"%/start_stop_sampling\", cv.input);
+				}
+			}".format(name, prefix),
+			(name ++ \Sampler).asSymbol,
 			midiMode: 0, softWithin: 0
-		); // no button defined within the TouchOSC interface
+		).oscConnect(touchOSC.ip, nil, "%/start_stop_sampling".format(prefix))
+		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-in", inBus, \in,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].inBus_(cv.value);
-				if (CVCenter.scv.samplers['%'].touchOSC.class === NetAddr) {
-					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/set_in_bus\", cv.input);
-					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/in_bus_num\", cv.value.asInteger);
+				var sampler = SNSampler.all['%'],
+					osc = sampler.touchOSC;
+				sampler.inBus_(cv.value);
+				if (osc.notNil and: { osc.class === NetAddr }) {
+					osc.sendMsg(\"%/set_in_bus\", cv.input);
+					osc.sendMsg(\"%/in_bus_num\", cv.value.asInteger);
 				}
-			}".format(name, name, name, prefix, name, prefix)
+			}".format(name, prefix, prefix),
+			(name ++ \Sampler).asSymbol
 		).oscConnect(touchOSC.ip, nil, "%/set_in_bus".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-set bufnum", 0, [0, numBuffers - 1, \lin, 1, 0],
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recBufnum_(cv.value);
-				if (CVCenter.scv.samplers['%'].touchOSC.class === NetAddr) {
-					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/set_next_samplebuffer\", cv.input);
-					CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/next_bufnum\", cv.value.asInteger);
+				var sampler = SNSampler.all['%'],
+					osc = sampler.touchOSC;
+				sampler.recBufnum_(cv.value);
+				if (osc.notNil and: { osc.class === NetAddr }) {
+					osc.sendMsg(\"%/set_next_samplebuffer\", cv.input);
+					osc.sendMsg(\"%/next_bufnum\", cv.value.asInteger);
 				}
-			}".format(name, name, name, prefix, name, prefix)
+			}".format(name, prefix, prefix),
+			(name ++ \Sampler).asSymbol
 		).oscConnect(touchOSC.ip, nil, "%/set_next_samplebuffer".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-compressor", 0, nil,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\compress, cv.value);
-				CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/sample_compressor_amp\", cv.input);
-			}".format(name, name, prefix),
+				var sampler = SNSampler.all['%'],
+					osc = sampler.touchOSC;
+				sampler.set('compress', cv.value);
+				if (osc.notNil and: { osc.class === NetAddr }) {
+					osc.sendMsg(\"%/sample_compressor_amp\", cv.input);
+				}
+			}".format(name, prefix),
+			(name ++ \Sampler).asSymbol,
 			midiMode: 0, softWithin: 0
 		).oscConnect(touchOSC.ip, nil, "%/sample_compressor_amp".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-compThresh", 0.5, nil,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\compThresh, cv.value)
+				SNSampler.all['%'].recorder.set(\\compThresh, cv.value)
 			}".format(name),
-			'in compressor'
+			(name ++ ' in compressor').asSymbol
 		);
 		this.cvCenterAddWidget("-clampTime", 0.01, nil,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\clampTime, cv.value)
+				SNSampler.all['%'].recorder.set(\\clampTime, cv.value)
 			}".format(name),
-			'in compressor'
+			(name ++ ' in compressor').asSymbol
 		);
 		this.cvCenterAddWidget("-slopeBelow", 1.0, nil,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\slopeBelow, cv.value)
+				SNSampler.all['%'].recorder.set(\\slopeBelow, cv.value)
 			}".format(name),
-			'in compressor'
+			(name ++ ' in compressor').asSymbol
 		);
 		this.cvCenterAddWidget("-slopeAbove", 0.5, nil,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\slopeAbove, cv.value)
+				SNSampler.all['%'].recorder.set(\\slopeAbove, cv.value)
 			}".format(name),
-			'in compressor'
+			(name ++ ' in compressor').asSymbol
 		);
 		this.cvCenterAddWidget("-relaxTime", 0.01, nil,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\relaxTime, cv.value)
+				SNSampler.all['%'].recorder.set(\\relaxTime, cv.value)
 			}".format(name),
-			'in compressor'
+			(name ++ ' in compressor').asSymbol
 		);
 		this.cvCenterAddWidget("-bypass-amp", 0.0, \amp,
 			"{ |cv|
-				CVCenter.scv.samplers['%'].recorder.set(\\bypassAmp, cv.value);
-				CVCenter.scv.samplers['%'].touchOSC.sendMsg(\"%/sampler_bypass\", cv.input);
-			}".format(name, name, prefix),
+				var sampler = SNSampler.all['%'],
+					osc = sampler.touchOSC;
+				sampler.recorder.set(\\bypassAmp, cv.value);
+				if (osc.notNil and: { osc.class === NetAddr }) {
+					osc.sendMsg(\"%/sampler_bypass\", cv.input);
+				}
+			}".format(name, prefix),
+			(name ++ \Sampler).asSymbol,
 			midiMode: 0, softWithin: 0
 		).oscConnect(touchOSC.ip, nil, "%/sampler_bypass".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
 		this.cvCenterAddWidget("-setCompressor", 0, #[0, 1, \lin, 1],
 			"{ |cv|
-				CVCenter.scv.samplers['%'].setInputCompressor
-			}".format(name), name
+				SNSampler.all['%'].setInputCompressor
+			}".format(name),
+			(name ++ \Sampler).asSymbol
 		);
 	}
 
