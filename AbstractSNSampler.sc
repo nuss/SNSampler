@@ -3,7 +3,7 @@ AbstractSNSampler {
 
 	*initClass {
 		// grain synth for pattern replay
-		SynthDef(\grain, { |bufnum=0, t_trig=0, start=0, end=1, out=0, rate=1, tempo=1, atk=0.1, sust=1, rel=0.7, curve=(-4), gate=1, grainAmp=0.5|
+		SynthDef(\grain, { |bufnum=0, t_trig=0, start=0, end=1, out=0, rate=1, tempo=1, atk=0.1, sust=1, rel=0.7, curve=(-4), gate=1, grainAmp=1.0|
 			var env = EnvGen.ar(Env.asr(atk, sust, rel, curve), gate, doneAction: 2);
 			var outp = BufRd.ar(
 				1, bufnum,
