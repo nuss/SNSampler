@@ -195,11 +195,11 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.addActionAt((name ++ \Amp).asSymbol, 'looper out volume', "{ |cv|
 			var player = SNSamplePlayer.all['%'],
 				osc = player.touchOSC;
-			player.out.set('amp', cv.value);
+				player.out.set(('%' ++ 'Amp').asSymbol, cv.value);
 			if (osc.notNil and: { osc.class === NetAddr }) {
 				osc.sendMsg(\"%/looper_out_volume\", cv.input)
 			}
-		}".format(name, prefix));
+		}".format(name, name, prefix));
 		CVCenter.cvWidgets[(name ++ \Amp).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_out_volume".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
 
