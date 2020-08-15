@@ -72,6 +72,9 @@ A link::Classes/Boolean:: determining whether sampling should be started or stop
 ARGUMENT:: bufnum
 A link::Classes/Integer::, denoting the link::Classes/Buffer#-bufnum#bufnum:: to which audio shall be recorded. If not provided the sampler will either write to the next available bufnum or use a random bufnum if link::#-randomBufferSelect:: has been set to code::true::.
 
+METHOD:: scope
+Open a link::Classes/Stethoscope::, displaying the currently recorded audio. This method will be called automatically when calling link::-setupSampler:: but can be called anytime to recreate the stethoscope e.g. if it has been closed accidently.
+
 METHOD:: reset
 Reset one or all buffers. Recorded audio will be reset to zero, the link::#-loopLengths:: will be reset and, if given, code::doneAction:: will be executed.
 
@@ -80,6 +83,9 @@ An link::Classes/Integer::, denoting the buffer number that should be reset.
 
 ARGUMENT:: doneAction
 A link::Classes/Function:: that will be executed upon reseting the buffer(s)
+
+METHOD:: quit
+Quit the sampler and free all resources except CVWidgets. After calling this method a new SNSampler of the same name can be initialized. CVWidgets created for the old SNSampler will still work with the new one.
 
 SUBSECTION:: Instance variables - getters and setters
 

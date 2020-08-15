@@ -557,7 +557,7 @@ SNSamplePlayer : AbstractSNSampler {
 		Ndef(looperName).resume;
 	}
 
-	clear { |fadeTime=0.2|
+	quit { |fadeTime=0.2|
 		Ndef(outName).clear(fadeTime);
 		fork {
 			fadeTime.wait;

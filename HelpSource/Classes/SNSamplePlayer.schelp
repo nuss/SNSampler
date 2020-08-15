@@ -76,8 +76,8 @@ Pause the player. Internally this will pause the Ndef that keeps the loopers for
 METHOD:: resume
 Resume a paused player. Internally this will resume the Ndef that keeps the loopers for all buffers.
 
-METHOD:: clear
-Clear the player. This will clear the loopers emphasis::and:: all effects that have been chained to the output of the player. Once an SNSamplePlayer has been cleared it can not be restarted.
+METHOD:: quit
+Quit the player. This will clear the loopers emphasis::and:: all effects that have been chained to the output of the player. Once an SNSamplePlayer has been quit it can not be restarted but you can initialize a new one under the same name.
 
 ARGUMENT:: fadeTime
 A link::Classes/Float:: or link::Classes/Integer::, determining the fade-out time of the player in seconds.

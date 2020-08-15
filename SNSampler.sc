@@ -4,7 +4,7 @@ SNSampler : AbstractSNSampler {
 	var <recorder, <buffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
-	var <inBus;
+	var <inBus, soundIn, scopeBus, <scopeWindow;
 	var controllerKeys;
 	var <>doneAction;
 
@@ -46,7 +46,7 @@ SNSampler : AbstractSNSampler {
 				recorder = NodeProxy.audio(server, numChannels).pause.play;
 				if (numChannels < 2) { inBus = in } { inBus = in ! numChannels };
 				recorder[0] = {
-					var soundIn, rawIn = SoundIn.ar(\in.kr(inBus));
+					var rawIn = SoundIn.ar(\in.kr(inBus));
 					soundIn = XFade2.ar(
 						rawIn,
 						Compander.ar(
@@ -58,7 +58,7 @@ SNSampler : AbstractSNSampler {
 							\relaxTime.kr(0.01)
 						),
 						\compress.kr(0)
-					).scope(name ++ " in");
+					);
 					BufWr.ar(
 						soundIn,
 						\bufnum.kr(0),
@@ -70,8 +70,11 @@ SNSampler : AbstractSNSampler {
 						)
 					);
 					rawIn!2 * \bypassAmp.kr(0);
+					scopeBus = Bus.audio(server, numChannels);
+					Out.ar(scopeBus.index, soundIn);
 				};
 
+				this.scope;
 				this.prCreateWidgets;
 				isSetUp = true;
 
@@ -181,6 +184,21 @@ SNSampler : AbstractSNSampler {
 			controllerKeys = controllerKeys.add(\value)
 		};
 		samplingModel.value_([bool, bufnum]).changedKeys(controllerKeys)
+	}
+
+	scope {
+		if (scopeWindow.isNil or: { scopeWindow.window.isClosed }) {
+			{
+				scopeWindow = Stethoscope(server, numChannels, scopeBus.index);
+				Stethoscope.ugenScopes.add(scopeWindow);
+				scopeWindow.window.onClose_({
+					scopeWindow.free;
+					// scopeBus.free;
+					Stethoscope.ugenScopes.remove(scopeWindow);
+				});
+				scopeWindow.window.name_(name ++ " in");
+			}.defer(0.001);
+		}
 	}
 
 	reset { |index, doneAction|
@@ -340,6 +358,16 @@ SNSampler : AbstractSNSampler {
 			}".format(name),
 			(name ++ \Sampler).asSymbol
 		);
+	}
+
+	quit {
+		recorder.clear;
+		buffers.do { |b|
+			b.close.free;
+		};
+		scopeWindow.quit;
+		scopeWindow = nil;
+		all[name] = nil;
 	}
 
 	// empirically gained defaults
