@@ -69,9 +69,9 @@ SNSampler : AbstractSNSampler {
 							BufFrames.kr(\bufnum.kr(0))
 						)
 					);
-					rawIn!2 * \bypassAmp.kr(0);
 					scopeBus = Bus.audio(server, numChannels);
 					Out.ar(scopeBus.index, soundIn);
+					rawIn!2 * \bypassAmp.kr(0);
 				};
 
 				this.scope;
