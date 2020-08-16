@@ -252,7 +252,14 @@ SNSampler : AbstractSNSampler {
 			.setOscInputConstraints(Point(0, 1));
 		};
 		this.cvCenterAddWidget("-resetAll", 0, #[0, 1, \lin, 1],
-			"{ |cv| SNSampler.all['%'].reset }".format(name),
+			"{ |cv|
+				var sampler = SNSampler.all['%'],
+					osc = sampler.touchOSC;
+				sampler.reset;
+				if (osc.notNil and: { osc.class === NetAddr }) {
+					%.do { |n| osc.sendMsg(\"%/sample_buf_\" ++ n, 0) }
+				}
+			}".format(name, numBuffers, prefix),
 			(name ++ \Sampler).asSymbol,
 			midiMode: 0, softWithin: 0
 		).oscConnect(touchOSC.ip, nil, "%/reset_all_samples".format(prefix))
