@@ -1,7 +1,7 @@
 SNSamplePlayer : AbstractSNSampler {
 	classvar <all;
 	var <name, <bufLength, <mode, <numOutChannels, <>touchOSC, <>touchOSCPanel;
-	var <>buffers, numBuffers, <group;
+	var <>buffers, bufNums, numBuffers, <group, <backupBuffers;
 	var <server, <loopLengths;
 	var <debug = false;
 	var looperName, outName, <looperPlayer, <out;
@@ -40,11 +40,17 @@ SNSamplePlayer : AbstractSNSampler {
 		};
 	}
 
-	setupPlayer { |bufferArray, volumeControlNode=1000|
+	// backupBuffers should be backupBuffers array from sampler
+	setupPlayer { |bufferArray, volumeControlNode=1000, backupBuffers|
 		if (bufferArray.isNil) {
 			Error("An array of consecutive buffers must be provided for setting up a player").throw;
 		} {
 			numBuffers = bufferArray.size;
+			bufNums = bufferArray.collect(_.bufnum);
+		};
+
+		backupBuffers !? {
+			this.backupBuffers = backupBuffers;
 		};
 
 		this.buffers = bufferArray;
@@ -555,6 +561,63 @@ SNSamplePlayer : AbstractSNSampler {
 
 	resume {
 		Ndef(looperName).resume;
+	}
+
+	setBuffer { |index, newBuffer|
+		var maxval, durCV, startCV, endCV;
+		if (index >= numBuffers) {
+			"Can't add a buffer at the given index".inform;
+			^this;
+		} {
+			// bufnums is an array of the bufnums of the array of buffers passed in with setupPlayer
+			// these buffers are likely not stored anywhere else. Hence we make sure they don't get lost
+			if (bufNums.includes(this.buffers[index].bufnum)) {
+				this.backupBuffers[index] = (buffer: this.buffers[index], length: loopLengths[index]);
+			};
+			this.buffers[index] = newBuffer;
+			loopLengths[index] = newBuffer.numFrames / newBuffer.sampleRate;
+			durCV = CVCenter.at((name ++ \Dur).asSymbol);
+			startCV = CVCenter.at((name ++ \Start).asSymbol);
+			endCV = CVCenter.at((name ++ \End).asSymbol);
+			// the new buffer will presumably be filled from start to end
+			// hence, we reset specs and values of CVs
+			durCV !? { durCV.spec.maxval[index] = loopLengths[index] };
+			startCV !? {
+				startCV.spec.maxval[index] = 1;
+				startCV.value_(0);
+			};
+			endCV !? {
+				endCV.spec.maxval[index] = 1;
+				endCV.value_(1);
+			}
+		}
+	}
+
+	resetBuffer { |index|
+		var maxval, durCV, startCV, endCV;
+		if (index >= numBuffers) {
+			"Can't add a buffer at the given index".inform;
+			^this;
+		} {
+			this.buffers[index] = this.backupBuffers;[index].buffer;
+			loopLengths[index] = this.backupBuffers;[index].length;
+			this.backupBuffers[index] = nil;
+			startCV = CVCenter.at((name ++ \Start).asSymbol);
+			endCV = CVCenter.at((name ++ \End).asSymbol);
+			durCV !? { durCV.spec.maxval[index] = loopLengths[index] };
+			// we can assume that all initial buffers have a length of buLength
+			// and the buffer that we've just switched to is one of the initial buffers
+			// hence we repeat the procedure when the buffer was filled
+			// otherwise, if the buffer is empty, loopLength[index] == bufLength
+			startCV !? {
+				startCV.spec.maxval[index] = loopLengths[index] / bufLength;
+				startCV.value_(0);
+			};
+			endCV !? {
+				endCV.spec.maxval[index] = loopLengths[index] / bufLength;
+				endCV.value_(endCV.spec.maxval[index]);
+			}
+		}
 	}
 
 	quit { |fadeTime=0.2|
