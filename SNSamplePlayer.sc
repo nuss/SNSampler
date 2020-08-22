@@ -41,7 +41,7 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	// backupBuffers should be backupBuffers array from sampler
-	setupPlayer { |bufferArray, volumeControlNode=1000, backupBuffers|
+	setupPlayer { |bufferArray, volumeControlNode=1000, argBackupBuffers|
 		if (bufferArray.isNil) {
 			Error("An array of consecutive buffers must be provided for setting up a player").throw;
 		} {
@@ -49,8 +49,8 @@ SNSamplePlayer : AbstractSNSampler {
 			bufNums = bufferArray.collect(_.bufnum);
 		};
 
-		backupBuffers !? {
-			this.backupBuffers = backupBuffers;
+		argBackupBuffers !? {
+			backupBuffers = argBackupBuffers;
 		};
 
 		this.buffers = bufferArray;
@@ -564,7 +564,7 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	setBuffer { |index, newBuffer|
-		var maxval, durCV, startCV, endCV;
+		var maxval, durCV, startCV, endCV, value;
 		if (index >= numBuffers) {
 			"Can't add a buffer at the given index".inform;
 			^this;
@@ -572,7 +572,7 @@ SNSamplePlayer : AbstractSNSampler {
 			// bufnums is an array of the bufnums of the array of buffers passed in with setupPlayer
 			// these buffers are likely not stored anywhere else. Hence we make sure they don't get lost
 			if (bufNums.includes(this.buffers[index].bufnum)) {
-				this.backupBuffers[index] = (buffer: this.buffers[index], length: loopLengths[index]);
+				backupBuffers[index] = (buffer: this.buffers[index], length: loopLengths[index]);
 			};
 			this.buffers[index] = newBuffer;
 			loopLengths[index] = newBuffer.numFrames / newBuffer.sampleRate;
@@ -584,23 +584,28 @@ SNSamplePlayer : AbstractSNSampler {
 			durCV !? { durCV.spec.maxval[index] = loopLengths[index] };
 			startCV !? {
 				startCV.spec.maxval[index] = 1;
-				startCV.value_(0);
+				value = startCV.value;
+				value[index] = 0;
+				startCV.value_(value);
 			};
 			endCV !? {
 				endCV.spec.maxval[index] = 1;
-				endCV.value_(1);
-			}
+				value = endCV.value;
+				value[index] = 1;
+				endCV.value_(value);
+			};
+			this.initDef(this.mode, this.buffers);
 		}
 	}
 
 	resetBuffer { |index|
-		var maxval, durCV, startCV, endCV;
+		var maxval, durCV, startCV, endCV, value;
 		if (index >= numBuffers) {
 			"Can't add a buffer at the given index".inform;
 			^this;
 		} {
-			this.buffers[index] = this.backupBuffers;[index].buffer;
-			loopLengths[index] = this.backupBuffers;[index].length;
+			this.buffers[index] = this.backupBuffers[index].buffer;
+			loopLengths[index] = this.backupBuffers[index].length;
 			this.backupBuffers[index] = nil;
 			startCV = CVCenter.at((name ++ \Start).asSymbol);
 			endCV = CVCenter.at((name ++ \End).asSymbol);
@@ -611,12 +616,17 @@ SNSamplePlayer : AbstractSNSampler {
 			// otherwise, if the buffer is empty, loopLength[index] == bufLength
 			startCV !? {
 				startCV.spec.maxval[index] = loopLengths[index] / bufLength;
-				startCV.value_(0);
+				value = startCV.value;
+				value[index] = 0;
+				startCV.value_(value);
 			};
 			endCV !? {
 				endCV.spec.maxval[index] = loopLengths[index] / bufLength;
-				endCV.value_(endCV.spec.maxval[index]);
-			}
+				value = endCV.value;
+				value[index] = endCV.spec.maxval[index];
+				endCV.value_(value);
+			};
+			this.initDef(this.mode, this.buffers);
 		}
 	}
 

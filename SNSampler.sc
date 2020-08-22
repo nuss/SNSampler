@@ -1,7 +1,7 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
 	var <name, numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel;
-	var <recorder, <buffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum;
+	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
 	var <inBus, soundIn, scopeBus, <scopeWindow;
@@ -40,6 +40,7 @@ SNSampler : AbstractSNSampler {
 		if (isSetUp.not) {
 			server.waitForBoot {
 				buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, numChannels);
+				backupBuffers = nil ! numBuffers;
 				loopLengths = bufLength ! numBuffers;
 				usedBuffers = false ! numBuffers;
 				server.sync;
@@ -126,6 +127,15 @@ SNSampler : AbstractSNSampler {
 								lastBufnum = bufnum;
 							};
 							bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
+							// if index is nil the buffer has likely been replaced by a pre-recorded one
+							// if buffer has been backed up, restore buffers with backed up buffer
+							bufIndex ?? {
+								bufIndex = backupBuffers.detectIndex { |buf|
+									buf.notNil and: { buf.bufnum == bufnum }
+								};
+								buffers[bufIndex] = backupBuffers[bufIndex];
+								backupBuffers[bufIndex] = nil;
+							};
 							if (touchOSC.class === NetAddr) {
 								oscDisplay.(touchOSC, \blink, bufIndex, prefix)
 							};
