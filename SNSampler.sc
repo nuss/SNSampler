@@ -1,6 +1,6 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
-	var <name, numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel;
+	var <name, numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
 	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
@@ -8,7 +8,7 @@ SNSampler : AbstractSNSampler {
 	var controllerKeys;
 	var <>doneAction;
 
-	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, server, touchOSC, touchOSCPanel=1|
+	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, server, touchOSC, touchOSCPanel=1, buffersPanel=4|
 		server ?? { server = Server.default };
 		^super.newCopyArgs(
 			name.asSymbol,
@@ -17,7 +17,8 @@ SNSampler : AbstractSNSampler {
 			numChannels,
 			server,
 			touchOSC,
-			touchOSCPanel
+			touchOSCPanel,
+			buffersPanel
 		).init;
 	}
 
@@ -111,7 +112,13 @@ SNSampler : AbstractSNSampler {
 				};
 
 				samplingController.put(\value, { |changer, what|
-					var length, nextBuf, bufIndex, bufnum;
+					var length, nextBuf, bufIndex, bufnum, bufPprefix;
+
+					if (buffersPanel.notNil) {
+						bufPprefix = "/" ++ this.buffersPanel;
+					} {
+						bufPprefix = "";
+					};
 
 					isSampling = changer.value[0];
 					changer.value[1] !? { bufnum = changer.value[1] };
@@ -135,6 +142,9 @@ SNSampler : AbstractSNSampler {
 								};
 								buffers[bufIndex] = backupBuffers[bufIndex].buffer;
 								backupBuffers[bufIndex] = nil;
+								if (this.touchOSC.notNil and: { this.touchOSC.class === NetAddr}) {
+									touchOSC.sendMsg(bufPprefix ++ "/switch_ext_buf" ++ (bufIndex+1), 0);
+								}
 							};
 							if (touchOSC.class === NetAddr) {
 								oscDisplay.(touchOSC, \blink, bufIndex, prefix)
