@@ -131,9 +131,9 @@ SNSampler : AbstractSNSampler {
 							// if buffer has been backed up, restore buffers with backed up buffer
 							bufIndex ?? {
 								bufIndex = backupBuffers.detectIndex { |buf|
-									buf.notNil and: { buf.bufnum == bufnum }
+									buf.notNil and: { buf.buffer.bufnum == bufnum }
 								};
-								buffers[bufIndex] = backupBuffers[bufIndex];
+								buffers[bufIndex] = backupBuffers[bufIndex].buffer;
 								backupBuffers[bufIndex] = nil;
 							};
 							if (touchOSC.class === NetAddr) {

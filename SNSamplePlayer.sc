@@ -1,20 +1,22 @@
 SNSamplePlayer : AbstractSNSampler {
 	classvar <all;
-	var <name, <bufLength, <mode, <numOutChannels, <>touchOSC, <>touchOSCPanel;
+	var <name, <bufLength, <mode, <numOutChannels, <>touchOSC, <>touchOSCPanel, <>bufferLoader, <>bufLoaderPanel;
 	var <>buffers, bufNums, numBuffers, <group, <backupBuffers;
 	var <server, <loopLengths;
 	var <debug = false;
-	var looperName, outName, <looperPlayer, <out;
+	var looperName, outName, <looperPlayer, <def, <out;
 	var trace;
 
-	*new { |name=\Looper, bufLength=60, mode=\grain, numOutChannels=2, server, touchOSC, touchOSCPanel=1|
+	*new { |name=\Looper, bufLength=60, mode=\grain, numOutChannels=2, server, touchOSC, touchOSCPanel=1, bufferLoader, bufLoaderPanel=4|
 		^super.newCopyArgs(
 			name.asSymbol,
 			bufLength,
 			mode.asSymbol,
 			numOutChannels,
 			touchOSC,
-			touchOSCPanel
+			touchOSCPanel,
+			bufferLoader,
+			bufLoaderPanel
 		).init(server);
 	}
 
@@ -78,12 +80,18 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	prSetUpControls { |volumeControl|
-		var prefix;
+		var prefix, bufLoaderPrefix;
 
 		if (touchOSCPanel.notNil) {
 			prefix = "/" ++ touchOSCPanel;
 		} {
 			prefix = "";
+		};
+
+		if (bufLoaderPanel.notNil) {
+			bufLoaderPrefix = "/" ++ bufLoaderPanel;
+		} {
+			bufLoaderPrefix = "";
 		};
 
 		// basic controls: start stop etc.
@@ -277,6 +285,38 @@ SNSamplePlayer : AbstractSNSampler {
 			.setOscInputConstraints(Point(0, 1));
 		};
 
+		if (bufferLoader.notNil && bufferLoader.class === SNBufferLoader) {
+			var svItems = bufferLoader.buffers.collect { |buf| buf.path.split.last.splitext[0] };
+			numBuffers.do { |n|
+				CVCenter.use((name ++ "SelectBuf" ++ (n+1)).asSymbol, tab: (name ++ \ExtBufs).asSymbol, svItems: svItems.collect(_.asSymbol));
+				CVCenter.addActionAt((name ++ "SelectBuf" ++ (n+1)).asSymbol, 'select buf', "{ |sv|
+					var player = SNSamplePlayer.all['%'],
+						osc = player.touchOSC;
+					if (osc.notNil and: { osc.class === NetAddr }) {
+						osc.sendMsg(\"%/ext_buf%_label\", sv.item);
+						osc.sendMsg(\"%/select_ext_buffer%\", sv.input);
+					}
+				}".format(name, bufLoaderPrefix, n+1, bufLoaderPrefix, n+1));
+				CVCenter.cvWidgets[(name ++ "SelectBuf" ++ (n+1)).asSymbol].oscConnect(touchOSC.ip, nil, "%/select_ext_buffer%".format(bufLoaderPrefix, n+1))
+				.setOscInputConstraints(Point(0, 1));
+				CVCenter.use((name ++ \SwitchBuf ++ (n+1)).asSymbol, \false, tab: (name ++ \ExtBufs).asSymbol);
+				CVCenter.addActionAt((name ++ \SwitchBuf ++ (n+1)).asSymbol, 'switch buffer', "{ |cv|
+					var player = SNSamplePlayer.all['%'],
+						osc = player.touchOSC;
+					if (cv.input.booleanValue) {
+						player.setBuffer(%, player.bufferLoader.buffers[CVCenter.at(('%' ++ 'SelectBuf' ++ %).asSymbol).value]);
+					} {
+						player.resetBuffer(%);
+					};
+					if (osc.notNil and: { osc.class === NetAddr}) {
+						osc.sendMsg(\"%/switch_ext_buf%\", cv.input)
+					}
+				}".format(name, n, name, n+1, n, bufLoaderPrefix, n+1));
+				CVCenter.cvWidgets[(name ++ \SwitchBuf ++ (n+1)).asSymbol].oscConnect(touchOSC.ip, nil, "%/switch_ext_buf%".format(bufLoaderPrefix, n+1))
+				.setOscInputConstraints(Point(0, 1));
+			}
+		};
+
 		// mode \grain specific - should go into initDef
 		CVCenter.use((name ++ "Start").asSymbol, [0!numBuffers, loopLengths/bufLength], tab: looperName);
 		CVCenter.use((name ++ "End").asSymbol, [0!numBuffers, loopLengths/bufLength], loopLengths/bufLength, looperName);
@@ -337,17 +377,15 @@ SNSamplePlayer : AbstractSNSampler {
 		// CVCenter.at((name ++ \Start).asSymbol).spec_([0!numBuffers, loopLengths/bufLength].asSpec);
 		// CVCenter.at((name ++ \End).asSymbol).spec_([0!numBuffers, loopLengths/bufLength, \lin, 0.0, loopLengths/bufLength].asSpec);
 
-		source = this.initDef;
+		this.initDef;
 
 		Ndef(looperName).mold(numBuffers, \audio, \elastic);
-		Ndef(looperName)[0] = source;
+		Ndef(looperName)[0] = def;
 		Ndef(looperName).pause;
 		looperPlayer = Ndef(looperName);
 	}
 
 	initDef { |argMode, bufferArray|
-		var def;
-
 		mode ?? { mode = argMode };
 		bufferArray !? {
 			if (bufferArray.size != numBuffers) {
@@ -581,7 +619,12 @@ SNSamplePlayer : AbstractSNSampler {
 			endCV = CVCenter.at((name ++ \End).asSymbol);
 			// the new buffer will presumably be filled from start to end
 			// hence, we reset specs and values of CVs
-			durCV !? { durCV.spec.maxval[index] = loopLengths[index] };
+			durCV !? {
+				durCV.spec.maxval[index] = loopLengths[index];
+				value = durCV.value;
+				value[index] = loopLengths[index];
+				durCV.value_(value);
+			};
 			startCV !? {
 				startCV.spec.maxval[index] = 1;
 				value = startCV.value;
@@ -609,7 +652,12 @@ SNSamplePlayer : AbstractSNSampler {
 			this.backupBuffers[index] = nil;
 			startCV = CVCenter.at((name ++ \Start).asSymbol);
 			endCV = CVCenter.at((name ++ \End).asSymbol);
-			durCV !? { durCV.spec.maxval[index] = loopLengths[index] };
+			durCV !? {
+				durCV.spec.maxval[index] = loopLengths[index];
+				value = durCV.value;
+				value[index] = loopLengths[index];
+				durCV.value_(value);
+			};
 			// we can assume that all initial buffers have a length of buLength
 			// and the buffer that we've just switched to is one of the initial buffers
 			// hence we repeat the procedure when the buffer was filled
