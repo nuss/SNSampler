@@ -4,7 +4,7 @@ SNSampler : AbstractSNSampler {
 	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum, bufnums;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
-	var <inBus, soundIn, scopeBus, <scopeWindow;
+	var <inBus, soundIn, scopeBus, scopeWindow;
 	var controllerKeys;
 	var <>doneAction;
 
