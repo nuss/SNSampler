@@ -1,7 +1,7 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
 	var <name, numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
-	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum;
+	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum, bufnums;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
 	var <inBus, soundIn, scopeBus, <scopeWindow;
@@ -41,6 +41,7 @@ SNSampler : AbstractSNSampler {
 		if (isSetUp.not) {
 			server.waitForBoot {
 				buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, numChannels);
+				bufnums = buffers.collect(_.bufnum);
 				backupBuffers = nil ! numBuffers;
 				loopLengths = bufLength ! numBuffers;
 				usedBuffers = false ! numBuffers;
@@ -221,14 +222,31 @@ SNSampler : AbstractSNSampler {
 		}
 	}
 
+	// only reset buffers reserved for writing
 	reset { |index, doneAction|
 		fork({
 			if (index.isNil) {
-				buffers.do(_.zero);
-				loopLengths = 0.1 ! numBuffers;
+				buffers.do { |buf, i|
+					if (bufnums.include(buf.bufnum)) {
+						buf.zero;
+						loopLengths[i] = 0.1;
+					} {
+						backupBuffers[i] !? {
+							backupBuffers[i].buffer.zero;
+							backupBuffers[i].length = 0.1;
+						}
+					}
+				}
 			} {
-				buffers[index].zero;
-				loopLengths[index] = 0.1;
+				if (bufnums.include(buffers[index].bufnum)) {
+					buffers[index].zero;
+					loopLengths[index] = 0.1;
+				} {
+					backupBuffers[index] !? {
+						backupBuffers[index].buffer.zero;
+						backupBuffers[index].length = 0.1;
+					}
+				}
 			};
 			if (doneAction.isFunction) {
 				doneAction.value;
