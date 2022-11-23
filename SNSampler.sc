@@ -227,8 +227,9 @@ SNSampler : AbstractSNSampler {
 		fork({
 			if (index.isNil) {
 				buffers.do { |buf, i|
-					if (bufnums.include(buf.bufnum)) {
+					if (bufnums.includes(buf.bufnum)) {
 						buf.zero;
+						"buffer % zeroed".format(i).inform;
 						loopLengths[i] = 0.1;
 					} {
 						backupBuffers[i] !? {
@@ -238,12 +239,14 @@ SNSampler : AbstractSNSampler {
 					}
 				}
 			} {
-				if (bufnums.include(buffers[index].bufnum)) {
+				if (bufnums.includes(buffers[index].bufnum)) {
 					buffers[index].zero;
+					"buffer % zeroed".format(index).inform;
 					loopLengths[index] = 0.1;
 				} {
 					backupBuffers[index] !? {
 						backupBuffers[index].buffer.zero;
+						"backup buffer % zeroed".format(index).inform;
 						backupBuffers[index].length = 0.1;
 					}
 				}
