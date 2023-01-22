@@ -1,14 +1,14 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
-	var <name, numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel;
-	var <recorder, <buffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum;
+	var <name, numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
+	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum, bufnums;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
-	var <inBus, soundIn, scopeBus, <scopeWindow;
+	var <inBus, soundIn, scopeBus, scopeWindow;
 	var controllerKeys;
 	var <>doneAction;
 
-	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, server, touchOSC, touchOSCPanel=1|
+	*new { |name=\Sampler, numBuffers=5, bufLength=60, numChannels=1, server, touchOSC, touchOSCPanel=1, buffersPanel=4|
 		server ?? { server = Server.default };
 		^super.newCopyArgs(
 			name.asSymbol,
@@ -17,7 +17,8 @@ SNSampler : AbstractSNSampler {
 			numChannels,
 			server,
 			touchOSC,
-			touchOSCPanel
+			touchOSCPanel,
+			buffersPanel
 		).init;
 	}
 
@@ -40,6 +41,8 @@ SNSampler : AbstractSNSampler {
 		if (isSetUp.not) {
 			server.waitForBoot {
 				buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, numChannels);
+				bufnums = buffers.collect(_.bufnum);
+				backupBuffers = nil ! numBuffers;
 				loopLengths = bufLength ! numBuffers;
 				usedBuffers = false ! numBuffers;
 				server.sync;
@@ -110,7 +113,13 @@ SNSampler : AbstractSNSampler {
 				};
 
 				samplingController.put(\value, { |changer, what|
-					var length, nextBuf, bufIndex, bufnum;
+					var length, nextBuf, bufIndex, bufnum, bufPprefix;
+
+					if (buffersPanel.notNil) {
+						bufPprefix = "/" ++ this.buffersPanel;
+					} {
+						bufPprefix = "";
+					};
 
 					isSampling = changer.value[0];
 					changer.value[1] !? { bufnum = changer.value[1] };
@@ -126,6 +135,18 @@ SNSampler : AbstractSNSampler {
 								lastBufnum = bufnum;
 							};
 							bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
+							// if index is nil the buffer has likely been replaced by a pre-recorded one
+							// if buffer has been backed up, restore buffers with backed up buffer
+							bufIndex ?? {
+								bufIndex = backupBuffers.detectIndex { |buf|
+									buf.notNil and: { buf.buffer.bufnum == bufnum }
+								};
+								buffers[bufIndex] = backupBuffers[bufIndex].buffer;
+								backupBuffers[bufIndex] = nil;
+								if (this.touchOSC.notNil and: { this.touchOSC.class === NetAddr}) {
+									touchOSC.sendMsg(bufPprefix ++ "/switch_ext_buf" ++ (bufIndex+1), 0);
+								}
+							};
 							if (touchOSC.class === NetAddr) {
 								oscDisplay.(touchOSC, \blink, bufIndex, prefix)
 							};
@@ -201,14 +222,34 @@ SNSampler : AbstractSNSampler {
 		}
 	}
 
+	// only reset buffers reserved for writing
 	reset { |index, doneAction|
 		fork({
 			if (index.isNil) {
-				buffers.do(_.zero);
-				loopLengths = 0.1 ! numBuffers;
+				buffers.do { |buf, i|
+					if (bufnums.includes(buf.bufnum)) {
+						buf.zero;
+						"buffer % zeroed".format(i).inform;
+						loopLengths[i] = 0.1;
+					} {
+						backupBuffers[i] !? {
+							backupBuffers[i].buffer.zero;
+							backupBuffers[i].length = 0.1;
+						}
+					}
+				}
 			} {
-				buffers[index].zero;
-				loopLengths[index] = 0.1;
+				if (bufnums.includes(buffers[index].bufnum)) {
+					buffers[index].zero;
+					"buffer % zeroed".format(index).inform;
+					loopLengths[index] = 0.1;
+				} {
+					backupBuffers[index] !? {
+						backupBuffers[index].buffer.zero;
+						"backup buffer % zeroed".format(index).inform;
+						backupBuffers[index].length = 0.1;
+					}
+				}
 			};
 			if (doneAction.isFunction) {
 				doneAction.value;
