@@ -2,6 +2,10 @@ SNBufferLoader {
 	classvar <all;
 	var <name, <buffers, <server;
 
+	*initClass {
+		all = ();
+	}
+
 	*new { |name, buffers, server|
 		^super.newCopyArgs(
 			name,
@@ -11,7 +15,6 @@ SNBufferLoader {
 	}
 
 	init {
-		all ?? { all = () };
 		all.put(name.asSymbol, this);
 		buffers ?? {
 			buffers = List[];

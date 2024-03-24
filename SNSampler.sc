@@ -1,7 +1,7 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
 	var <name, numBuffers, <bufLength, <numChannels, <server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
-	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <>doneAction, <isSetUp = false, <lastBufnum, bufnums;
+	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <isSetUp = false, <lastBufnum, bufnums;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
 	var <inBus, soundIn, scopeBus, scopeWindow;
@@ -64,12 +64,12 @@ SNSampler : AbstractSNSampler {
 					);
 					BufWr.ar(
 						soundIn,
-						\bufnum.kr(0),
+						\bufnum.kr(buffers[0].bufnum),
 						Phasor.ar(
 							\trig.tr(0),
 							BufRateScale.kr(\bufnum.kr(buffers[0].bufnum)),
 							0,
-							BufFrames.kr(\bufnum.kr(0))
+							BufFrames.kr(\bufnum.kr(buffers[0].bufnum))
 						)
 					);
 					scopeBus = Bus.audio(server, numChannels);

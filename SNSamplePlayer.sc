@@ -34,7 +34,7 @@ SNSamplePlayer : AbstractSNSampler {
 		if (bool) {
 			trace.setSource(
 				Pfunc { |e|
-					"index: %, bufnum: %, dur: %, start: %, end: %\n".format(e.channelOffset, e.bufnum, e.dur, e.start, e.end)
+					"index: %, bufnum: %, dur: %, start: %, end: %, rate: %, amp: %\n".format(e.channelOffset, e.bufnum, e.dur, e.start, e.end, e.brate, e.amp)
 				}.trace
 			)
 		} {
@@ -43,7 +43,7 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	// backupBuffers should be backupBuffers array from sampler
-	setupPlayer { |bufferArray, volumeControlNode=1000, argBackupBuffers|
+	setupPlayer { |bufferArray, volumeControlNode=1000, argBackupBuffers, splayAz=false|
 		if (bufferArray.isNil) {
 			Error("An array of consecutive buffers must be provided for setting up a player").throw;
 		} {
@@ -58,7 +58,7 @@ SNSamplePlayer : AbstractSNSampler {
 		this.buffers = bufferArray;
 
 		loopLengths = bufLength ! numBuffers;
-		this.prSetUpControls(volumeControlNode);
+		this.prSetUpControls(volumeControlNode, splayAz);
 		// this.prInitPatternPlayer(bufferArray);
 	}
 
@@ -79,7 +79,7 @@ SNSamplePlayer : AbstractSNSampler {
 		}
 	}
 
-	prSetUpControls { |volumeControl|
+	prSetUpControls { |volumeControl, splayAz|
 		var prefix, bufLoaderPrefix;
 
 		if (touchOSCPanel.notNil) {
@@ -259,8 +259,9 @@ SNSamplePlayer : AbstractSNSampler {
 		.setOscInputConstraints(Point(0, 1));
 
 		// if numOutChannels > 2 SplayAz is used nstead of Splay
-		if (numOutChannels > 2) {
-			CVCenter.use((name ++ \Width).asSymbol, #[1, numOutChannels], 2, (name ++ \Out).asSymbol);
+		if (numOutChannels > 2 or: { splayAz }) {
+			"numOutChannels: %".format(numOutChannels).postln;
+			CVCenter.use((name ++ \Width).asSymbol, [1, numOutChannels], 2, (name ++ \Out).asSymbol);
 			CVCenter.addActionAt((name ++ \Width).asSymbol, 'set width', "{ |cv|
 				var player = SNSamplePlayer.all['%'],
 					osc = player.touchOSC;
@@ -269,10 +270,10 @@ SNSamplePlayer : AbstractSNSampler {
 					osc.sendMsg(\"%/looper_width_rotary\", cv.input)
 				}
 			}".format(name, name, prefix));
-			CVCenter.cvWidgets[(name ++ \Width)].oscConnect(touchOSC.ip, nil, "%/looper_width_rotary".format(prefix))
+			CVCenter.cvWidgets[(name ++ \Width).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_width_rotary".format(prefix))
 			.setOscInputConstraints(Point(0, 1));
 
-			CVCenter.use((name ++ \Orientation).asSymbol, #[1, numOutChannels], 2, (name ++ \Out).asSymbol);
+			CVCenter.use((name ++ \Orientation).asSymbol, nil, 2, (name ++ \Out).asSymbol);
 			CVCenter.addActionAt((name ++ \Orientation).asSymbol, 'set orientation', "{ |cv|
 				var player = SNSamplePlayer.all['%'],
 					osc = player.touchOSC;
@@ -280,12 +281,12 @@ SNSamplePlayer : AbstractSNSampler {
 				if (osc.notNil and: { osc.class === NetAddr }) {
 					osc.sendMsg(\"%/looper_orientation_rotary\", cv.input)
 				}
-			}".format(name, prefix));
-			CVCenter.cvWidgets[(name ++ \Orientation)].oscConnect(touchOSC.ip, nil, "%/looper_orientation_rotary".format(prefix))
+			}".format(name, name, prefix));
+			CVCenter.cvWidgets[(name ++ \Orientation).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_orientation_rotary".format(prefix))
 			.setOscInputConstraints(Point(0, 1));
 		};
 
-		if (bufferLoader.notNil && bufferLoader.class === SNBufferLoader) {
+		if (bufferLoader.notNil and: { bufferLoader.class === SNBufferLoader }) {
 			var svItems = bufferLoader.buffers.collect { |buf| buf.path.split.last.splitext[0] };
 			numBuffers.do { |n|
 				CVCenter.use((name ++ "SelectBuf" ++ (n+1)).asSymbol, tab: (name ++ \ExtBufs).asSymbol, svItems: svItems.collect(_.asSymbol));
@@ -332,7 +333,7 @@ SNSamplePlayer : AbstractSNSampler {
 			Ndef(outName).group_(ParGroup.new)
 		};
 
-		if (numOutChannels <= 2) {
+		if (numOutChannels <= 2  and: { splayAz.not }) {
 			Ndef(outName)[0] = {
 				Splay.ar(
 					\in.ar(0 ! numBuffers),
@@ -412,7 +413,7 @@ SNSamplePlayer : AbstractSNSampler {
 							\bufnum, buffers[i].bufnum,
 							\start, CVCenter.cvWidgets[(name ++ "Start").asSymbol].split[i],
 							\end, CVCenter.cvWidgets[(name ++ "End").asSymbol].split[i],
-							\rate, CVCenter.cvWidgets[(name ++ "Rate").asSymbol].split[i],
+							\brate, CVCenter.cvWidgets[(name ++ "Rate").asSymbol].split[i],
 							\atk, CVCenter.cvWidgets[(name ++ "Atk").asSymbol].split[i],
 							\sust, CVCenter.cvWidgets[(name ++ "Sust").asSymbol].split[i],
 							\rel, CVCenter.cvWidgets[(name ++ "Rel").asSymbol].split[i],
