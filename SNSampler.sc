@@ -38,7 +38,7 @@ SNSampler : AbstractSNSampler {
 		var samplingLocked = false;
 
 		doneAction !? { this.doneAction_(doneAction) };
-		if (isSetUp.not) {
+		if (isSetUp == false) {
 			server.waitForBoot {
 				buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, numChannels);
 				bufnums = buffers.collect(_.bufnum);
@@ -47,6 +47,7 @@ SNSampler : AbstractSNSampler {
 				usedBuffers = false ! numBuffers;
 				server.sync;
 				recorder = NodeProxy.audio(server, numChannels).pause.play;
+				"SNSampler: recorder initialized".postln;
 				if (numChannels < 2) { inBus = in } { inBus = in ! numChannels };
 				recorder[0] = {
 					var rawIn = SoundIn.ar(\in.kr(inBus));
@@ -115,6 +116,7 @@ SNSampler : AbstractSNSampler {
 				samplingController.put(\value, { |changer, what|
 					var length, nextBuf, bufIndex, bufnum, bufPprefix;
 
+					"samplingModel: %".format(changer.value).postln;
 					if (buffersPanel.notNil) {
 						bufPprefix = "/" ++ this.buffersPanel;
 					} {
@@ -182,12 +184,14 @@ SNSampler : AbstractSNSampler {
 							} {
 								nextBuf = usedBuffers.selectIndex{ |bool| bool == false }.choose;
 							};
+							// "next sample buffer: %".format(nextBuf).postln;
 
 							if (touchOSC.class === NetAddr) {
 								oscDisplay.(touchOSC, \written, bufIndex, prefix)
 							};
 
 							recorder.set(\bufnum, buffers[nextBuf].bufnum);
+							"next bufnum: %".format(recorder.get(\bufnum)).postln;
 							CVCenter.at((name ++ "-set bufnum").asSymbol).value_(nextBuf);
 							onTime = nil;
 							samplingLocked = false;
@@ -309,7 +313,7 @@ SNSampler : AbstractSNSampler {
 			"{ |cv|
 				var sampler = SNSampler.all['%'],
 					osc = sampler.touchOSC;
-				sampler.sample(cv.input.booleanValue);
+				sampler.sample(cv.input.booleanValue, sampler.recBufnum);
 				if (osc.notNil and: { osc.class === NetAddr }) {
 					osc.sendMsg(\"%/start_stop_sampling\", cv.input);
 				}
@@ -335,7 +339,8 @@ SNSampler : AbstractSNSampler {
 			"{ |cv|
 				var sampler = SNSampler.all['%'],
 					osc = sampler.touchOSC;
-				sampler.recBufnum_(cv.value);
+				sampler.recBufnum_(sampler.buffers[cv.value].bufnum);
+				(\"recording to bufnum \" + sampler.buffers[cv.value]).postln;
 				if (osc.notNil and: { osc.class === NetAddr }) {
 					osc.sendMsg(\"%/set_next_samplebuffer\", cv.input);
 					osc.sendMsg(\"%/next_bufnum\", cv.value.asInteger);

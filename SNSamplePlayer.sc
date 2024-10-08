@@ -43,7 +43,7 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	// backupBuffers should be backupBuffers array from sampler
-	setupPlayer { |bufferArray, volumeControlNode=1000, argBackupBuffers, splayAz=false|
+	setupPlayer { |bufferArray, volumeControlNode=1000, argBackupBuffers, useSplayAz=false|
 		if (bufferArray.isNil) {
 			Error("An array of consecutive buffers must be provided for setting up a player").throw;
 		} {
@@ -58,7 +58,7 @@ SNSamplePlayer : AbstractSNSampler {
 		this.buffers = bufferArray;
 
 		loopLengths = bufLength ! numBuffers;
-		this.prSetUpControls(volumeControlNode, splayAz);
+		this.prSetUpControls(volumeControlNode, useSplayAz);
 		// this.prInitPatternPlayer(bufferArray);
 	}
 
@@ -79,7 +79,7 @@ SNSamplePlayer : AbstractSNSampler {
 		}
 	}
 
-	prSetUpControls { |volumeControl, splayAz|
+	prSetUpControls { |volumeControl, useSplayAz|
 		var prefix, bufLoaderPrefix;
 
 		if (touchOSCPanel.notNil) {
@@ -259,7 +259,7 @@ SNSamplePlayer : AbstractSNSampler {
 		.setOscInputConstraints(Point(0, 1));
 
 		// if numOutChannels > 2 SplayAz is used nstead of Splay
-		if (numOutChannels > 2 or: { splayAz }) {
+		if (numOutChannels > 2 or: { useSplayAz }) {
 			"numOutChannels: %".format(numOutChannels).postln;
 			CVCenter.use((name ++ \Width).asSymbol, [1, numOutChannels], 2, (name ++ \Out).asSymbol);
 			CVCenter.addActionAt((name ++ \Width).asSymbol, 'set width', "{ |cv|
@@ -294,7 +294,7 @@ SNSamplePlayer : AbstractSNSampler {
 					var player = SNSamplePlayer.all['%'],
 						osc = player.touchOSC;
 					if (osc.notNil and: { osc.class === NetAddr }) {
-						osc.sendMsg(\"%/ext_buf%_label\", sv.item);
+						osc.sendMsg(\"%/ext_buf%_label\", sv.getIndex(sv.item).asString ++ ': ' ++ sv.item);
 						osc.sendMsg(\"%/select_ext_buffer%\", sv.input);
 					}
 				}".format(name, bufLoaderPrefix, n+1, bufLoaderPrefix, n+1));
@@ -333,7 +333,7 @@ SNSamplePlayer : AbstractSNSampler {
 			Ndef(outName).group_(ParGroup.new)
 		};
 
-		if (numOutChannels <= 2  and: { splayAz.not }) {
+		if (numOutChannels <= 2  and: { useSplayAz.not }) {
 			Ndef(outName)[0] = {
 				Splay.ar(
 					\in.ar(0 ! numBuffers),
@@ -648,9 +648,11 @@ SNSamplePlayer : AbstractSNSampler {
 			"Can't add a buffer at the given index".inform;
 			^this;
 		} {
-			this.buffers[index] = this.backupBuffers[index].buffer;
-			loopLengths[index] = this.backupBuffers[index].length;
-			this.backupBuffers[index] = nil;
+			this.backupBuffers[index] !? {
+				this.buffers[index] = this.backupBuffers[index].buffer;
+				loopLengths[index] = this.backupBuffers[index].length;
+				this.backupBuffers[index] = nil;
+			};
 			startCV = CVCenter.at((name ++ \Start).asSymbol);
 			endCV = CVCenter.at((name ++ \End).asSymbol);
 			durCV !? {
