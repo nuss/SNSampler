@@ -99,6 +99,9 @@ NOTE:: The port given in the NetAddr will be the port under which TouchOSC is em
 METHOD:: touchOSCPanel
 TouchOSC's graphical user interface is typically organized in panels. A toggle button on the first panel may be addressed through the following command name: code::/1/toggle1::. The code::touchOSCPanel:: should allow you to specify the panel under which buttons connected to the SNSampler live.
 
+METHOD:: buffersPanel
+A page in a TouchOSC GUI that is used select pre-recorded soundfiles. Default: code::4::
+
 METHOD:: randomBufferSelect
 Determine whether the next buffer for audio recording should be selected randomly. Even if this is set to code::true:: SNSampler will always try to select a buffer that has not yet been used for recording (only if all buffers have already been filled it will start overwriting already recorded audio).
 
@@ -127,6 +130,20 @@ The number of channels for each Buffer allocated when initializing a new SNSampl
 
 METHOD:: buffers
 Returns the array of consecutive buffers, allocated when the SNSampler was initialized.
+
+METHOD:: backupBuffers
+In an link::Classes/SNSamplePlayer:: not only sounds sampled live within SNSampler can be used but also prerecorded soundfiles. If a prerecorded sound is used a buffer in the link::-buffers:: array will be replaced by that sound. The replaced buffer will be backed up in code::backupBuffers:: along with the length of the actually recorded audio in seconds under the same index as in the code::buffers:: array. Contrary to the code::buffers:: array, code::backupBuffers:: is an array of events:
+
+code::
+[
+	(buffer:<buffer 1>, length:<length of recorded audio in buffer 1>),
+	(buffer:<buffer 2>, length:<length of recorded audio in buffer 2>),
+	...
+	(buffer:<buffer N>, length:<length of recorded audio in buffer N>),
+]
+::
+
+Keeping the extra information on the length of the recorded audio allows for recreating the correct specs again, if the backed up buffer is used again.
 
 METHOD:: name
 The name of the SNSampler. By default this will be code::'Sampler'::.
