@@ -1,7 +1,7 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
 	var <name, numBuffers, <bufLength, /*<numChannels, */<server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
-	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <isSetUp = false, <lastBufnum, bufnums;
+	var <recorder, <buffers, <backupBuffers, <loopLengths, <usedBuffers, <isSetUp = false, <lastBufnum, bufnums, recordIns, recordBuffers;
 	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
 	var <>randomBufferSelect = false;
 	var <inBus, soundIn, scopeBus, scopeWindow;
@@ -36,54 +36,33 @@ SNSampler : AbstractSNSampler {
 		bufnums = Array.newClear(numBuffers);
 		backupBuffers = nil ! numBuffers;
 		usedBuffers = false ! numBuffers;
+		recordBuffers = List();
 		server.waitForBoot {
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, completionMessage: { |b, i|
 				bufnums[i] = b.bufnum;
 			});
+			recorder = NodeProxy.audio(server, 1).pause.play;
+			"SNSampler: recorder initialized\nBuffers: %".format(buffers).postln;
 		}
 	}
 
-	prepareRecording { |ins=#[0], doneAction|
+	prepareRecording { |bufIndex=0, in=0, doneAction|
 		var oscDisplay, prefix;
 		var samplingLocked = false;
+
+		if (recordBuffers.includes(buffers[bufIndex].bufnum)) {
+			"buffer at index % (bufnum: %) already reserved for recording".format(bufIndex, buffers[bufIndex].bufnum).error;
+			^nil;
+		};
 
 		doneAction !? { this.doneAction_(doneAction) };
 		if (isSetUp == false) {
 			// buffers will always be 1 channel only
-			server.sync;
-			// recorder = NodeProxy.audio(server, numChannels).pause.play;
-			recorder = NodeProxy.audio(server, 1).pause.play;
-			"SNSampler: recorder initialized".postln;
-			// if (numChannels < 2) { inBus = in } { inBus = in ! numChannels };
-			inBus = ins;
-			recorder[0] = {
-				var rawIn = SoundIn.ar(\in.kr(inBus));
-				soundIn = XFade2.ar(
-					rawIn,
-					Compander.ar(
-						rawIn, rawIn,
-						\compThresh.kr(0.5),
-						\slopeBelow.kr(1.0),
-						\slopeAbove.kr(0.5),
-						\clampTime.kr(0.01),
-						\relaxTime.kr(0.01)
-					),
-					\compress.kr(0)
-				);
-				BufWr.ar(
-					soundIn,
-					\bufnum.kr(buffers[0].bufnum),
-					Phasor.ar(
-						\trig.tr(0),
-						BufRateScale.kr(\bufnum.kr(buffers[0].bufnum)),
-						0,
-						BufFrames.kr(\bufnum.kr(buffers[0].bufnum))
-					)
-				);
-				// scopeBus = Bus.audio(server, numChannels);
-				// Out.ar(scopeBus.index, soundIn);
-				rawIn!2 * \bypassAmp.kr(0);
-			};
+			this.prRecorderFunc(in, buffers[bufIndex].bufnum, 0);
+			// 	// scopeBus = Bus.audio(server, numChannels);
+			// 	// Out.ar(scopeBus.index, soundIn);
+			// 	rawIn!2 * \bypassAmp.kr(0);
+			// };
 
 			this.scope;
 			this.prCreateWidgets;
@@ -430,19 +409,10 @@ SNSampler : AbstractSNSampler {
 		all[name] = nil;
 	}
 
-	// empirically gained defaults
-	setInputCompressor { |thresh=0.5, slopeBelow=0.03, slopeAbove=0.15, clampTime=0.01, relaxTime=0.23|
-		CVCenter.at((name ++ '-compThresh').asSymbol).value_(thresh);
-		CVCenter.at((name ++ '-slopeBelow').asSymbol).value_(slopeBelow);
-		CVCenter.at((name ++ '-slopeAbove').asSymbol).value_(slopeAbove);
-		CVCenter.at((name ++ '-clampTime').asSymbol).value_(clampTime);
-		CVCenter.at((name ++ '-relaxTime').asSymbol).value_(relaxTime);
-	}
-
 	prRecorderFunc { |in, bufnum, trig|
 		^{
 			BufWr.ar(SoundIn.ar(in), bufnum,
-				Phasor.ar(trig, BufRateScale.kr(bufnum), 0, BufFrames.kr(bufnum))
+				Phasor.ar(\trig.tr(0), BufRateScale.kr(bufnum), 0, BufFrames.kr(bufnum))
 			)
 		}
 	}
