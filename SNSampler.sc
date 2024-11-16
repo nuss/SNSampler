@@ -47,8 +47,6 @@ SNSampler : AbstractSNSampler {
 	}
 
 	prepareRecording { |bufIndex=0, in=0, doneAction|
-		var oscDisplay, prefix;
-		var samplingLocked = false;
 
 		if (recordBuffers.includes(buffers[bufIndex].bufnum)) {
 			"buffer at index % (bufnum: %) already reserved for recording".format(bufIndex, buffers[bufIndex].bufnum).error;
@@ -58,7 +56,7 @@ SNSampler : AbstractSNSampler {
 		doneAction !? { this.doneAction_(doneAction) };
 		if (isSetUp == false) {
 			// buffers will always be 1 channel only
-			this.prRecorderFunc(in, buffers[bufIndex].bufnum, 0);
+			recorder.sources = recorder.sources.add(this.prRecorderFunc(in, buffers[bufIndex].bufnum, 0));
 			// 	// scopeBus = Bus.audio(server, numChannels);
 			// 	// Out.ar(scopeBus.index, soundIn);
 			// 	rawIn!2 * \bypassAmp.kr(0);
@@ -68,132 +66,40 @@ SNSampler : AbstractSNSampler {
 			this.prCreateWidgets;
 			isSetUp = true;
 
-			samplingModel = Ref(isSampling);
-			samplingController = SimpleController(samplingModel);
 
-			if (touchOSCPanel.notNil) {
-				prefix = "/" ++ touchOSCPanel;
-			} {
-				prefix = "";
-			};
 
-			oscDisplay = { |addr, mode, bufIndex, panelPrefix|
-				blink ?? {
-					blink = fork({
-						loop {
-							// "blink".postln;
-							addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 0);
-							1.wait;
-							addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1);
-							1.wait
-						}
-					}, AppClock);
-				};
+			// oscDisplay = { |addr, mode, bufIndex, panelPrefix|
+			// 	blink ?? {
+			// 		blink = fork({
+			// 			loop {
+			// 				// "blink".postln;
+			// 				addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 0);
+			// 				1.wait;
+			// 				addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1);
+			// 				1.wait
+			// 			}
+			// 		}, AppClock);
+			// 	};
+			//
+			// 	switch(mode)
+			// 	{ \blink } { blink.play(AppClock) }
+			// 	{ \written } {
+			// 		blink.reset.stop;
+			// 		// "written".postln;
+			// 		addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1)
+			// 	};
+			// };
 
-				switch(mode)
-				{ \blink } { blink.play(AppClock) }
-				{ \written } {
-					blink.reset.stop;
-					// "written".postln;
-					addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1)
-				};
-			};
-
-			samplingController.put(\value, { |changer, what|
-				var length, nextBuf, bufIndex, bufnum, bufPprefix;
-
-				"samplingModel: %".format(changer.value).postln;
-				if (buffersPanel.notNil) {
-					bufPprefix = "/" ++ this.buffersPanel;
-				} {
-					bufPprefix = "";
-				};
-
-				isSampling = changer.value[0];
-				changer.value[1] !? { bufnum = changer.value[1] };
-				if (isSampling) {
-					if (samplingLocked.not) {
-						"start sampling".postln;
-						onTime = Main.elapsedTime;
-						recorder.resume;
-						if (changer.value[1].isNil) {
-							bufnum = recorder.get(\bufnum);
-							// bufnum will be advanced on stop
-							// for the user's convenience store the just used bufnum to a variable
-							lastBufnum = bufnum;
-						};
-						bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
-						// if index is nil the buffer has likely been replaced by a pre-recorded one
-						// if buffer has been backed up, restore buffers with backed up buffer
-						bufIndex ?? {
-							bufIndex = backupBuffers.detectIndex { |buf|
-								buf.notNil and: { buf.buffer.bufnum == bufnum }
-							};
-							buffers[bufIndex] = backupBuffers[bufIndex].buffer;
-							backupBuffers[bufIndex] = nil;
-							if (this.touchOSC.notNil and: { this.touchOSC.class === NetAddr}) {
-								touchOSC.sendMsg(bufPprefix ++ "/switch_ext_buf" ++ (bufIndex+1), 0);
-							}
-						};
-						if (touchOSC.class === NetAddr) {
-							oscDisplay.(touchOSC, \blink, bufIndex, prefix)
-						};
-						samplingLocked = true;
-					}
-				} {
-					var amps, durs, ends;
-					if (samplingLocked) {
-						offTime = Main.elapsedTime;
-						recorder.pause;
-						// reset phasor before next sampling
-						recorder.set(\trig, 1);
-						bufnum = recorder.get(\bufnum);
-						// bufffers may begin with other bufnums than 0,
-						// so we use the index in the buffers array
-						bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
-						usedBuffers[bufIndex] = true;
-						// reset if all buffers have been filled already
-						if (usedBuffers.select { |bool| bool == true }.size == numBuffers) {
-							usedBuffers = false ! numBuffers;
-						};
-						length = offTime - onTime;
-						(length < 0.1).if { length = 0.1 };
-						"stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
-						if (length > bufLength) {
-							loopLengths[bufIndex] = bufLength;
-						} {
-							loopLengths[bufIndex] = length;
-						};
-						this.doneAction.value(bufIndex, loopLengths[bufIndex]);
-						if (this.randomBufferSelect.not) {
-							nextBuf = bufIndex + 1 % numBuffers;
-						} {
-							nextBuf = usedBuffers.selectIndex{ |bool| bool == false }.choose;
-						};
-						// "next sample buffer: %".format(nextBuf).postln;
-
-						if (touchOSC.class === NetAddr) {
-							oscDisplay.(touchOSC, \written, bufIndex, prefix)
-						};
-
-						recorder.set(\bufnum, buffers[nextBuf].bufnum);
-						"next bufnum: %".format(recorder.get(\bufnum)).postln;
-						CVCenter.at((name ++ "-set bufnum").asSymbol).value_(nextBuf);
-						onTime = nil;
-						samplingLocked = false;
-					}
-				}
-			})
 		} {
 			"sampler '%' already set up!".format(name).inform;
 		}
 	}
 
-	sample { |bool, bufnum|
+	sample { |bool, bufnums|
 		if (controllerKeys.includes(\value).not) {
 			controllerKeys = controllerKeys.add(\value)
 		};
-		samplingModel.value_([bool, bufnum]).changedKeys(controllerKeys)
+		samplingModel.value_([bool, bufnums]).changedKeys(controllerKeys)
 	}
 
 	scope {
@@ -415,6 +321,106 @@ SNSampler : AbstractSNSampler {
 				Phasor.ar(\trig.tr(0), BufRateScale.kr(bufnum), 0, BufFrames.kr(bufnum))
 			)
 		}
+	}
+
+	prSetUpSamplingController {
+		var oscDisplay, prefix;
+		var samplingLocked = false;
+
+		// if (touchOSCPanel.notNil) {
+		// 	prefix = "/" ++ touchOSCPanel;
+		// } {
+		// 	prefix = "";
+		// };
+
+		samplingModel = Ref(isSampling);
+		samplingController = SimpleController(samplingModel);
+		samplingController.put(\value, { |changer, what|
+			var length, nextBuf, bufIndex, bufnums, bufnum, bufPprefix;
+
+			"samplingModel: %".format(changer.value).postln;
+			// if (buffersPanel.notNil) {
+			// 	bufPprefix = "/" ++ this.buffersPanel;
+			// } {
+			// 	bufPprefix = "";
+			// };
+
+			isSampling = changer.value[0];
+			if (isSampling) {
+				if (samplingLocked.not) {
+					"start sampling".postln;
+					onTime = Main.elapsedTime;
+
+					recorder.resume;
+					// if (changer.value[1].isNil) {
+					// 	bufnum = recorder.get(\bufnum);
+					// 	// bufnum will be advanced on stop
+					// 	// for the user's convenience store the just used bufnum to a variable
+					// 	lastBufnum = bufnum;
+					// };
+					bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
+					// if index is nil the buffer has likely been replaced by a pre-recorded one
+					// if buffer has been backed up, restore buffers with backed up buffer
+					bufIndex ?? {
+						bufIndex = backupBuffers.detectIndex { |buf|
+							buf.notNil and: { buf.buffer.bufnum == bufnum }
+						};
+						buffers[bufIndex] = backupBuffers[bufIndex].buffer;
+						backupBuffers[bufIndex] = nil;
+						// if (this.touchOSC.notNil and: { this.touchOSC.class === NetAddr}) {
+						// touchOSC.sendMsg(bufPprefix ++ "/switch_ext_buf" ++ (bufIndex+1), 0);
+					// }
+					};
+					// if (touchOSC.class === NetAddr) {
+					// 	oscDisplay.(touchOSC, \blink, bufIndex, prefix)
+					// };
+					samplingLocked = true;
+				}
+			} {
+				var amps, durs, ends;
+				if (samplingLocked) {
+					offTime = Main.elapsedTime;
+					recorder.pause;
+					// reset phasor before next sampling
+					recorder.sources.do { |s| s = nil };
+					// recorder.set(\trig, 1);
+					// bufnum = recorder.get(\bufnum);
+					// bufffers may begin with other bufnums than 0,
+					// so we use the index in the buffers array
+					// bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
+					// usedBuffers[bufIndex] = true;
+					// reset if all buffers have been filled already
+					// if (usedBuffers.select { |bool| bool == true }.size == numBuffers) {
+					// usedBuffers = false ! numBuffers;
+				// };
+					length = offTime - onTime;
+					(length < 0.1).if { length = 0.1 };
+					// "stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
+					if (length > bufLength) {
+						loopLengths[bufIndex] = bufLength;
+					} {
+						loopLengths[bufIndex] = length;
+					};
+					this.doneAction.value(bufIndex, loopLengths[bufIndex]);
+					// if (this.randomBufferSelect.not) {
+					// nextBuf = bufIndex + 1 % numBuffers;
+				// } {
+					// nextBuf = usedBuffers.selectIndex{ |bool| bool == false }.choose;
+				// };
+					// "next sample buffer: %".format(nextBuf).postln;
+
+					// if (touchOSC.class === NetAddr) {
+					// 	oscDisplay.(touchOSC, \written, bufIndex, prefix)
+					// };
+
+					// recorder.set(\bufnum, buffers[nextBuf].bufnum);
+					// "next bufnum: %".format(recorder.get(\bufnum)).postln;
+					// CVCenter.at((name ++ "-set bufnum").asSymbol).value_(nextBuf);
+					onTime = nil;
+					samplingLocked = false;
+				}
+			}
+		})
 	}
 
 }
