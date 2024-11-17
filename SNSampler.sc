@@ -56,7 +56,7 @@ SNSampler : AbstractSNSampler {
 		doneAction !? { this.doneAction_(doneAction) };
 		if (isSetUp == false) {
 			// buffers will always be 1 channel only
-			recorder.sources = recorder.sources.add(this.prRecorderFunc(in, buffers[bufIndex].bufnum, 0));
+			recorder.add(this.prRecorderFunc(in, buffers[bufIndex].bufnum, 0));
 			// 	// scopeBus = Bus.audio(server, numChannels);
 			// 	// Out.ar(scopeBus.index, soundIn);
 			// 	rawIn!2 * \bypassAmp.kr(0);
@@ -95,11 +95,14 @@ SNSampler : AbstractSNSampler {
 		}
 	}
 
-	sample { |bool, bufnums|
+	sample { |bool, ins, bufIndices|
+		if (ins.size != bufIndices.size) {
+			Error("The number of ins must be equal to the number of buffers").throw;
+		};
 		if (controllerKeys.includes(\value).not) {
 			controllerKeys = controllerKeys.add(\value)
 		};
-		samplingModel.value_([bool, bufnums]).changedKeys(controllerKeys)
+		samplingModel.value_([bool, ins, bufIndices]).changedKeys(controllerKeys)
 	}
 
 	scope {
@@ -336,7 +339,7 @@ SNSampler : AbstractSNSampler {
 		samplingModel = Ref(isSampling);
 		samplingController = SimpleController(samplingModel);
 		samplingController.put(\value, { |changer, what|
-			var length, nextBuf, bufIndex, bufnums, bufnum, bufPprefix;
+			var length, bufIndices, bufIndex, bufnums, bufnum, bufPprefix;
 
 			"samplingModel: %".format(changer.value).postln;
 			// if (buffersPanel.notNil) {
@@ -352,16 +355,10 @@ SNSampler : AbstractSNSampler {
 					onTime = Main.elapsedTime;
 
 					recorder.resume;
-					// if (changer.value[1].isNil) {
-					// 	bufnum = recorder.get(\bufnum);
-					// 	// bufnum will be advanced on stop
-					// 	// for the user's convenience store the just used bufnum to a variable
-					// 	lastBufnum = bufnum;
-					// };
-					bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
 					// if index is nil the buffer has likely been replaced by a pre-recorded one
 					// if buffer has been backed up, restore buffers with backed up buffer
-					bufIndex ?? {
+					bufIndices = changer.value[2];
+					bufIndices.do { |i|
 						bufIndex = backupBuffers.detectIndex { |buf|
 							buf.notNil and: { buf.buffer.bufnum == bufnum }
 						};
@@ -377,45 +374,27 @@ SNSampler : AbstractSNSampler {
 					samplingLocked = true;
 				}
 			} {
-				var amps, durs, ends;
+				var amps, durs, ends, iLoopLenths;
 				if (samplingLocked) {
 					offTime = Main.elapsedTime;
 					recorder.pause;
 					// reset phasor before next sampling
 					recorder.sources.do { |s| s = nil };
-					// recorder.set(\trig, 1);
-					// bufnum = recorder.get(\bufnum);
-					// bufffers may begin with other bufnums than 0,
-					// so we use the index in the buffers array
-					// bufIndex = buffers.detectIndex{ |buf| buf.bufnum == bufnum };
-					// usedBuffers[bufIndex] = true;
-					// reset if all buffers have been filled already
-					// if (usedBuffers.select { |bool| bool == true }.size == numBuffers) {
-					// usedBuffers = false ! numBuffers;
-				// };
 					length = offTime - onTime;
 					(length < 0.1).if { length = 0.1 };
 					// "stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
-					if (length > bufLength) {
-						loopLengths[bufIndex] = bufLength;
-					} {
-						loopLengths[bufIndex] = length;
+					iLoopLengths = bufIndices.collect { |i|
+						if (length > bufLength) {
+							bufLength;
+						} {
+							length;
+						}
 					};
-					this.doneAction.value(bufIndex, loopLengths[bufIndex]);
-					// if (this.randomBufferSelect.not) {
-					// nextBuf = bufIndex + 1 % numBuffers;
-				// } {
-					// nextBuf = usedBuffers.selectIndex{ |bool| bool == false }.choose;
-				// };
-					// "next sample buffer: %".format(nextBuf).postln;
-
+					this.doneAction.value(i, iLoopLengths);
 					// if (touchOSC.class === NetAddr) {
 					// 	oscDisplay.(touchOSC, \written, bufIndex, prefix)
 					// };
 
-					// recorder.set(\bufnum, buffers[nextBuf].bufnum);
-					// "next bufnum: %".format(recorder.get(\bufnum)).postln;
-					// CVCenter.at((name ++ "-set bufnum").asSymbol).value_(nextBuf);
 					onTime = nil;
 					samplingLocked = false;
 				}
