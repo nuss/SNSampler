@@ -311,8 +311,8 @@ SNSampler : AbstractSNSampler {
 		recordIns.add(in);
 		recordBufIndices.add(bufIndex);
 		^{
-			BufWr.ar(SoundIn.ar(in).poll(label: "in %".format(in)), buffers[bufIndex].bufnum,
-				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum)).poll(label: "phasor %".format(bufIndex))
+			BufWr.ar(SoundIn.ar(in), buffers[bufIndex].bufnum,
+				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
 			)
 		}
 	}
@@ -332,7 +332,6 @@ SNSampler : AbstractSNSampler {
 		samplingController.put(\value, { |changer, what|
 			var length, bufIndices, bufIndex, bufnums, bufnum, bufPprefix;
 
-			"samplingModel: %".format(changer.value).postln;
 			// if (buffersPanel.notNil) {
 			// 	bufPprefix = "/" ++ this.buffersPanel;
 			// } {
@@ -343,7 +342,7 @@ SNSampler : AbstractSNSampler {
 			if (isSampling) {
 				if (recordIns.size > 0 and: { recordBufIndices.size > 0 }) {
 					"start sampling".postln;
-					recordBufIndices.do { |i|
+					/*recordBufIndices.do { |i|
 						bufIndex = backupBuffers.detectIndex { |buf|
 							buf.notNil and: { buf.buffer.bufnum == buffers[i].bufnum }
 						};
@@ -355,7 +354,7 @@ SNSampler : AbstractSNSampler {
 						// if (this.touchOSC.notNil and: { this.touchOSC.class === NetAddr}) {
 						// touchOSC.sendMsg(bufPprefix ++ "/switch_ext_buf" ++ (bufIndex+1), 0);
 					// }
-					};
+					};*/
 					onTime = Main.elapsedTime;
 					// if index is nil the buffer has likely been replaced by a pre-recorded one
 					// if buffer has been backed up, restore buffers with backed up buffer
@@ -370,10 +369,11 @@ SNSampler : AbstractSNSampler {
 				var amps, durs, ends, iLoopLengths;
 				"finish sampling".postln;
 				offTime = Main.elapsedTime;
-				recorder.pause;
-				// reset phasor before next sampling
-				recorder.removeAt;
-				"recorder.sources: %".format(recorder.sources).postln;
+				// important! remove sources before pausing!
+				// otherwise NodeProxy won't be initialized correctly for next recording
+				// empirically found out...
+				recorder.removeAt.pause;
+				// recorder.pause;
 				length = offTime - onTime;
 				(length < 0.1).if { length = 0.1 };
 				// "stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
