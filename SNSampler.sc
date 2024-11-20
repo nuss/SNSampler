@@ -42,12 +42,13 @@ SNSampler : AbstractSNSampler {
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, completionMessage: { |b, i|
 				bufnums[i] = b.bufnum;
 			});
-			recorder = NodeProxy.audio(server, 1).pause.play;
+			recorder = NodeProxy.audio(server, 1).pause;
 			"SNSampler: recorder initialized\nBuffers: %".format(buffers).postln;
 		}
 	}
 
 	prepareRecording { |activate=true, bufIndex=0, in=0, doneAction|
+		"activate: %, bufIndex: %, in: %".format(activate, bufIndex, in).postln;
 		if (recordBufIndices.includes(bufIndex)) {
 			"buffer at index % (bufnum: %) already reserved for recording".format(bufIndex, buffers[bufIndex].bufnum).error;
 			^nil;
@@ -56,7 +57,7 @@ SNSampler : AbstractSNSampler {
 		doneAction !? { this.doneAction_(doneAction) };
 		if (activate) {
 			// buffers will always be 1 channel only
-			recorder.put(bufIndex, this.prRecorderFunc(in, bufIndex), now: false);
+			recorder.put(bufIndex, this.prRecorderFunc(in, bufIndex));
 		} {
 			recorder.removeAt(bufIndex);
 		};
@@ -310,8 +311,8 @@ SNSampler : AbstractSNSampler {
 		recordIns.add(in);
 		recordBufIndices.add(bufIndex);
 		^{
-			BufWr.ar(SoundIn.ar(in).scope, buffers[bufIndex].bufnum,
-				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
+			BufWr.ar(SoundIn.ar(in).poll(label: "in %".format(in)), buffers[bufIndex].bufnum,
+				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum)).poll(label: "phasor %".format(bufIndex))
 			)
 		}
 	}
@@ -346,7 +347,7 @@ SNSampler : AbstractSNSampler {
 						bufIndex = backupBuffers.detectIndex { |buf|
 							buf.notNil and: { buf.buffer.bufnum == buffers[i].bufnum }
 						};
-						"bufIndex: %".format(bufIndex).postln;
+						// "bufIndex: %".format(bufIndex).postln;
 						bufIndex !? {
 							buffers[i] = backupBuffers[bufIndex].buffer;
 							backupBuffers[bufIndex] = nil;
