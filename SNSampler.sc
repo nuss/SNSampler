@@ -1,12 +1,12 @@
 SNSampler : AbstractSNSampler {
 	classvar <all;
-	var <name, numBuffers, <bufLength, /*<numChannels, */<server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
-	var <recorder, <buffers, <backupBuffers, <loopLengths, bufnums, recordIns, recordBufIndices;
+	var <name, <numBuffers, <bufLength, /*<numChannels, */<server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
+	var <recorder, <buffers, <backupBuffers, <loopLengths, bufnums;
 	// sampling status etc.
-	var <isSampling = false, samplingController, samplingModel, onTime, offTime, blink;
-	var <>randomBufferSelect = false;
+	var <setupController, <setupModel, <recordIns, <recordBufIndices;
+	var <samplingController, <samplingModel, onTime, offTime, blink;
 	var <inBus, soundIn, scopeBus, scopeWindow;
-	var controllerKeys;
+	var <>controllerKeys;
 	var <>doneAction;
 
 	*initClass {
@@ -32,12 +32,13 @@ SNSampler : AbstractSNSampler {
 			Error("A sampler under the name '%' already exists".format(name)).throw;
 		};
 		all.put(name, this);
-		controllerKeys = [];
+		this.controllerKeys = [\sampler];
 		loopLengths = bufLength ! numBuffers;
 		bufnums = Array.newClear(numBuffers);
 		backupBuffers = nil ! numBuffers;
 		#recordIns, recordBufIndices = List()!2;
-		this.prSetUpSamplingController;
+		this.prSamplingSetup;
+		this.prSamplingController;
 		server.waitForBoot {
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, completionMessage: { |b, i|
 				bufnums[i] = b.bufnum;
@@ -96,10 +97,7 @@ SNSampler : AbstractSNSampler {
 		if (recordIns.size != recordBufIndices.size) {
 			Error("The number of ins must be equal to the number of buffers reserved for recording").throw;
 		};
-		if (controllerKeys.includes(\value).not) {
-			controllerKeys = controllerKeys.add(\value)
-		};
-		samplingModel.value_(bool).changedKeys(controllerKeys)
+		samplingModel.value_(bool).changedKeys(this.controllerKeys)
 	}
 
 	scope {
@@ -310,6 +308,7 @@ SNSampler : AbstractSNSampler {
 	prRecorderFunc { |in, bufIndex|
 		recordIns.add(in);
 		recordBufIndices.add(bufIndex);
+		setupModel.value_((ins: recordIns, bufIDs: recordBufIndices)).changedKeys(this.controllerKeys);
 		^{
 			BufWr.ar(SoundIn.ar(in), buffers[bufIndex].bufnum,
 				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
@@ -317,9 +316,11 @@ SNSampler : AbstractSNSampler {
 		}
 	}
 
-	prSetUpSamplingController {
-		var oscDisplay, prefix;
-		var samplingLocked = false;
+	prSamplingController {
+		var length, bufIndices, bufIndex, bufnums, bufnum, bufPprefix;
+		var isSampling = false;
+
+		// var oscDisplay, prefix;
 
 		// if (touchOSCPanel.notNil) {
 		// 	prefix = "/" ++ touchOSCPanel;
@@ -329,8 +330,7 @@ SNSampler : AbstractSNSampler {
 
 		samplingModel = Ref(isSampling);
 		samplingController = SimpleController(samplingModel);
-		samplingController.put(\value, { |changer, what|
-			var length, bufIndices, bufIndex, bufnums, bufnum, bufPprefix;
+		samplingController.put(this.controllerKeys[0], { |changer, what|
 
 			// if (buffersPanel.notNil) {
 			// 	bufPprefix = "/" ++ this.buffersPanel;
@@ -373,7 +373,6 @@ SNSampler : AbstractSNSampler {
 				// otherwise NodeProxy won't be initialized correctly for next recording
 				// empirically found out...
 				recorder.removeAt.pause;
-				// recorder.pause;
 				length = offTime - onTime;
 				(length < 0.1).if { length = 0.1 };
 				// "stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
@@ -392,6 +391,11 @@ SNSampler : AbstractSNSampler {
 				onTime = nil;
 			}
 		})
+	}
+
+	prSamplingSetup {
+		setupModel = Ref((ins: recordIns, bufIDs: recordBufIndices));
+		setupController = SimpleController(setupModel);
 	}
 
 }
