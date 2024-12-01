@@ -3,7 +3,7 @@ SNSampler : AbstractSNSampler {
 	var <name, <numBuffers, <bufLength, /*<numChannels, */<server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
 	var <recorder, <buffers, <backupBuffers, <loopLengths, bufnums;
 	// sampling status etc.
-	var <setupController, <setupModel, <recordIns, <recordBufIndices;
+	var <setupController, <setupModel, <recBufIns;
 	var <samplingController, <samplingModel, onTime, offTime, blink;
 	var <inBus, soundIn, scopeBus, scopeWindow;
 	var <>controllerKeys;
@@ -36,7 +36,7 @@ SNSampler : AbstractSNSampler {
 		loopLengths = bufLength ! numBuffers;
 		bufnums = Array.newClear(numBuffers);
 		backupBuffers = nil ! numBuffers;
-		#recordIns, recordBufIndices = List()!2;
+		recBufIns = ();
 		this.prSamplingSetup;
 		this.prSamplingController;
 		server.waitForBoot {
@@ -50,16 +50,16 @@ SNSampler : AbstractSNSampler {
 
 	prepareRecording { |activate=true, bufIndex=0, in=0, doneAction|
 		"activate: %, bufIndex: %, in: %".format(activate, bufIndex, in).postln;
-		if (recordBufIndices.includes(bufIndex)) {
+		if (activate and: { recBufIns.keys.includes(bufIndex.asSymbol) }) {
 			"buffer at index % (bufnum: %) already reserved for recording".format(bufIndex, buffers[bufIndex].bufnum).error;
 			^nil;
 		};
-
 		doneAction !? { this.doneAction_(doneAction) };
 		if (activate) {
 			// buffers will always be 1 channel only
 			recorder.put(bufIndex, this.prRecorderFunc(in, bufIndex));
 		} {
+			"recBufIns: %".format(recBufIns).postln;
 			recorder.removeAt(bufIndex);
 		};
 		// 	// scopeBus = Bus.audio(server, numChannels);
@@ -94,9 +94,6 @@ SNSampler : AbstractSNSampler {
 	}
 
 	sample { |bool|
-		if (recordIns.size != recordBufIndices.size) {
-			Error("The number of ins must be equal to the number of buffers reserved for recording").throw;
-		};
 		samplingModel.value_(bool).changedKeys(this.controllerKeys)
 	}
 
@@ -306,9 +303,8 @@ SNSampler : AbstractSNSampler {
 	}
 
 	prRecorderFunc { |in, bufIndex|
-		recordIns.add(in);
-		recordBufIndices.add(bufIndex);
-		setupModel.value_((ins: recordIns, bufIDs: recordBufIndices)).changedKeys(this.controllerKeys);
+		recBufIns.put(bufIndex.asSymbol, in);
+		setupModel.value_(recBufIns).changedKeys(this.controllerKeys);
 		^{
 			BufWr.ar(SoundIn.ar(in), buffers[bufIndex].bufnum,
 				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
@@ -340,7 +336,7 @@ SNSampler : AbstractSNSampler {
 
 			isSampling = changer.value;
 			if (isSampling) {
-				if (recordIns.size > 0 and: { recordBufIndices.size > 0 }) {
+				if (recBufIns.size > 0) {
 					"start sampling".postln;
 					/*recordBufIndices.do { |i|
 						bufIndex = backupBuffers.detectIndex { |buf|
@@ -376,25 +372,25 @@ SNSampler : AbstractSNSampler {
 				length = offTime - onTime;
 				(length < 0.1).if { length = 0.1 };
 				// "stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
-				iLoopLengths = recordBufIndices.collect { |i|
+				iLoopLengths = recBufIns.keys.collect { |i|
 					if (length > bufLength) {
 						bufLength;
 					} {
 						length;
 					}
 				};
-				this.doneAction.value(recordBufIndices, iLoopLengths);
+				this.doneAction.value(recBufIns);
 				// if (touchOSC.class === NetAddr) {
 				// 	oscDisplay.(touchOSC, \written, bufIndex, prefix)
 				// };
-				[recordIns, recordBufIndices].do(_.clear);
+				recBufIns.clear;
 				onTime = nil;
 			}
 		})
 	}
 
 	prSamplingSetup {
-		setupModel = Ref((ins: recordIns, bufIDs: recordBufIndices));
+		setupModel = Ref(recBufIns);
 		setupController = SimpleController(setupModel);
 	}
 
