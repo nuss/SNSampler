@@ -59,7 +59,7 @@ SNSampler : AbstractSNSampler {
 			// buffers will always be 1 channel only
 			recorder.put(bufIndex, this.prRecorderFunc(in, bufIndex));
 		} {
-			"recBufIns: %".format(recBufIns).postln;
+			recBufIns[bufIndex.asSymbol] = nil;
 			recorder.removeAt(bufIndex);
 		};
 		// 	// scopeBus = Bus.audio(server, numChannels);
