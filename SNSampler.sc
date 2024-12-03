@@ -49,7 +49,6 @@ SNSampler : AbstractSNSampler {
 	}
 
 	prepareRecording { |activate=true, bufIndex=0, in=0, doneAction|
-		"activate: %, bufIndex: %, in: %".format(activate, bufIndex, in).postln;
 		if (activate and: { recBufIns.keys.includes(bufIndex.asSymbol) }) {
 			"buffer at index % (bufnum: %) already reserved for recording".format(bufIndex, buffers[bufIndex].bufnum).error;
 			^nil;
