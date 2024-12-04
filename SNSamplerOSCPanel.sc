@@ -26,9 +26,9 @@ SNSamplerOSCPanel {
 
 		all.put(sampler.name, this);
 		widgetNameTemplates = (
-			ins: "%-inBusses%",
-			buffers: "%-activateBuffers%",
-			resetBufs: "%-resetBuffers%",
+			ins: "%-inBus%",
+			buffers: "%-activateBuffer%",
+			resetBufs: "%-resetBuffer%",
 			resetAll: "%-resetAll",
 			startStop: "%-start/Stop",
 		);
@@ -36,7 +36,8 @@ SNSamplerOSCPanel {
 			selectInBus: "%/in_select/%",
 			displayInBus: "%/in%",
 			selectBuffer: "%/select_buffer/%/1",
-			zeroBuffer: "%/zeroBuffer/%",
+			// selectBuffer: "%/select_buffer%",
+			zeroBuffer: "%/zero_buffer/%/1",
 			bufferStatus: "%/buffer_status%",
 			startStop: "%/start_stop",
 			zeroAllBuffers: "%/zero_all"
@@ -51,41 +52,55 @@ SNSamplerOSCPanel {
 		sampler.numBuffers.do { |i|
 			wName = widgetNameTemplates.ins.format(sampler.name, i+1).asSymbol;
 			CVCenter.use(wName, tab: sampler.name, svItems: inKeys ? [\nil]);
+			this.oscAddr !? {
+				CVCenter.cvWidgets[wName].oscDisconnect.oscConnect(this.oscAddr.ip, name: this.cmdNameTemplates.selectInBus.format(this.oscCmdPrefix, i+1));
+			};
 			CVCenter.addActionAt(wName, 'set in label', "{ |sv|
-				SNSamplerOSCPanel.all['%'].oscAddr !? {
-					SNSamplerOSCPanel.all['%'].oscAddr.sendMsg(
-						SNSamplerOSCPanel.all['%'].cmdNameTemplates.displayInBus.format(SNSamplerOSCPanel.all['%'].oscCmdPrefix, %), sv.item
+				var oscPanel = SNSamplerOSCPanel.all['%'];
+				oscPanel.oscAddr !? {
+					oscPanel.oscAddr.sendMsg(
+						oscPanel.cmdNameTemplates.displayInBus.format(oscPanel.oscCmdPrefix, %), sv.item
 					);
-					SNSamplerOSCPanel.all['%'].oscAddr.sendMsg(
-						SNSamplerOSCPanel.all['%'].cmdNameTemplates.selectInBus.format(SNSamplerOSCPanel.all['%'].oscCmdPrefix, %), sv.input
+					oscPanel.oscAddr.sendMsg(
+						oscPanel.cmdNameTemplates.selectInBus.format(oscPanel.oscCmdPrefix, %), sv.input
 					);
 				}
-			}".format(sampler.name, sampler.name, sampler.name, sampler.name, i+1, sampler.name, sampler.name, sampler.name, i+1));
-			this.oscAddr !? {
-				CVCenter.cvWidgets[wName.asSymbol].oscConnect(this.oscAddr.ip, name: this.cmdNameTemplates.selectInBus.format(this.oscCmdPrefix, i+1));
-			};
+			}".format(sampler.name, i+1, i+1));
 			wName = widgetNameTemplates.buffers.format(sampler.name, i+1).asSymbol;
 			CVCenter.use(wName, \false, tab: sampler.name);
-			CVCenter.addActionAt(wName, 'activate buffer for sampling', "{ |cv|
-				SNSampler.all['%'].prepareRecording(cv.value.asBoolean, %, SNSamplerOSCPanel.all['%'].ins[CVCenter.at('%').item]);
-			}".format(
-				sampler.name, i, sampler.name,
-				widgetNameTemplates.ins.format(sampler.name, i+1)
-			));
-			CVCenter.addActionAt(wName, 'buffer activation feedback', "{ |cv|
-				SNSamplerOSCPanel.all['%'].oscAddr !? {
-					SNSamplerOSCPanel.all['%'].oscAddr.sendMsg(
-						\"%\", cv.input
-					)
+			this.oscAddr !? {
+				// weird hack: why do I have to disconnect first???
+				CVCenter.cvWidgets[wName].oscDisconnect.oscConnect(this.oscAddr.ip, name: this.cmdNameTemplates.selectBuffer.format(this.oscCmdPrefix, i+1));
+			};
+			CVCenter.addActionAt(wName, 'activate buffer for sampling', "{ |sv|
+				var sampler = SNSampler.all['%'];
+				var oscPanel = SNSamplerOSCPanel.all['%'];
+				sampler.prepareRecording(sv.value.asBoolean, %, oscPanel.ins[CVCenter.at('%').item]);
+				oscPanel.oscAddr !? {
+					oscPanel.oscAddr.sendMsg(\"%\", sv.input)
 				}
 			}".format(
-				sampler.name, sampler.name, this.cmdNameTemplates.selectBuffer.format(this.oscCmdPrefix, i+1)
+				sampler.name, sampler.name, i,
+				widgetNameTemplates.ins.format(sampler.name, i+1),
+				this.cmdNameTemplates.selectBuffer.format(this.oscCmdPrefix, i+1)
 			));
-			this.oscAddr !? {
-				CVCenter.cvWidgets[wName.asSymbol].oscConnect(this.oscAddr.ip, name: this.cmdNameTemplates.selectBuffer.format(this.oscCmdPrefix, i+1));
-			};
 			wName = widgetNameTemplates.resetBufs.format(sampler.name, i+1).asSymbol;
 			CVCenter.use(wName, \false, tab: sampler.name);
+			this.oscAddr !? {
+				// weird hack: why do I have to disconnect first???
+				CVCenter.cvWidgets[wName].oscDisconnect.oscConnect(this.oscAddr.ip, name: this.cmdNameTemplates.zeroBuffer.format(this.oscCmdPrefix, i+1));
+			};
+			CVCenter.addActionAt(wName, 'zero buffer', "{ |cv|
+				var sampler = SNSampler.all['%'];
+				var oscPanel = SNSamplerOSCPanel.all['%'];
+				sampler.reset(%);
+				oscPanel.oscAddr !? {
+					oscPanel.oscAddr.sendMsg(\"%\", cv.input)
+				}
+			}".format(
+				sampler.name, sampler.name, i,
+				this.cmdNameTemplates.zeroBuffer.format(this.oscCmdPrefix, i+1)
+			));
 		};
 		CVCenter.use(widgetNameTemplates.resetAll.format(sampler.name), \false, tab: sampler.name);
 		CVCenter.use(widgetNameTemplates.startStop.format(sampler.name), \false, tab: sampler.name);
