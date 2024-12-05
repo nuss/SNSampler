@@ -27,7 +27,6 @@ SNSampler : AbstractSNSampler {
 	}
 
 	init {
-		"server: %".format(server).postln;
 		if (all.includesKey(name)) {
 			Error("A sampler under the name '%' already exists".format(name)).throw;
 		};
