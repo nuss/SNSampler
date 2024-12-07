@@ -1,4 +1,4 @@
-SNSampler : AbstractSNSampler {
+SNSampler {
 	classvar <all;
 	var <name, <numBuffers, <bufLength, /*<numChannels, */<server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
 	var <recorder, <buffers, <backupBuffers, <loopLengths, filledBuffers, bufnums;
