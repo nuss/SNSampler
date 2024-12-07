@@ -1,9 +1,10 @@
 SNSampler {
 	classvar <all;
 	var <name, <numBuffers, <bufLength, /*<numChannels, */<server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
-	var <recorder, <buffers, <backupBuffers, <loopLengths, filledBuffers, bufnums;
+	var <recorder, <buffers, <backupBuffers, filledBuffers, bufnums;
 	// sampling status etc.
 	var <statusController, <statusModel, recBufIns, <recBufInsController, <recBufInsModel;
+	var loopLengths, <loopLengthsModel, <loopLengthsController;
 	var <samplingController, <samplingModel, onTime, offTime, blink;
 	var <inBus, soundIn, scopeBus, scopeWindow;
 	var <>controllerKeys;
@@ -122,11 +123,11 @@ SNSampler {
 					if (bufnums.includes(buf.bufnum)) {
 						buf.zero;
 						"buffer % zeroed".format(i).inform;
-						loopLengths[i] = 0.1;
+						loopLengths[i] = bufLength;
 					} {
 						backupBuffers[i] !? {
 							backupBuffers[i].buffer.zero;
-							backupBuffers[i].length = 0.1;
+							backupBuffers[i].length = bufLength;
 						}
 					};
 				};
@@ -135,17 +136,18 @@ SNSampler {
 				if (bufnums.includes(buffers[index].bufnum)) {
 					buffers[index].zero;
 					"buffer % zeroed".format(index).inform;
-					loopLengths[index] = 0.1;
+					loopLengths[index] = bufLength;
 				} {
 					backupBuffers[index] !? {
 						backupBuffers[index].buffer.zero;
 						"backup buffer % zeroed".format(index).inform;
-						backupBuffers[index].length = 0.1;
+						backupBuffers[index].length = bufLength;
 					}
 				};
 				filledBuffers.remove(index.asSymbol);
 			};
 			statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
+			loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
 			if (doneAction.isFunction) {
 				doneAction.value;
 			}
@@ -204,23 +206,9 @@ SNSampler {
 		var length, bufIndices, bufIndex, bufnums, bufnum, bufPprefix;
 		var isSampling = false;
 
-		// var oscDisplay, prefix;
-
-		// if (touchOSCPanel.notNil) {
-		// 	prefix = "/" ++ touchOSCPanel;
-		// } {
-		// 	prefix = "";
-		// };
-
 		samplingModel = Ref(isSampling);
 		samplingController = SimpleController(samplingModel);
 		samplingController.put(\sampler, { |changer, what|
-
-			// if (buffersPanel.notNil) {
-			// 	bufPprefix = "/" ++ this.buffersPanel;
-			// } {
-			// 	bufPprefix = "";
-			// };
 
 			isSampling = changer.value;
 			if (isSampling) {
@@ -243,14 +231,10 @@ SNSampler {
 					// if index is nil the buffer has likely been replaced by a pre-recorded one
 					// if buffer has been backed up, restore buffers with backed up buffer
 					recorder.resume;
-					// if (touchOSC.class === NetAddr) {
-					// 	oscDisplay.(touchOSC, \blink, bufIndex, prefix)
-					// };
 				} {
 					"Please define at least one input and one buffer to be recorded to!".error;
 				}
 			} {
-				var iLoopLengths;
 				"finish sampling".postln;
 				offTime = Main.elapsedTime;
 				// important! remove sources before pausing!
@@ -260,19 +244,17 @@ SNSampler {
 				length = offTime - onTime;
 				(length < 0.1).if { length = 0.1 };
 				// "stop sampling, index: %, buffer length: %\n".postf(bufIndex, length);
-				iLoopLengths = recBufIns.keys.collect { |i|
+				recBufIns.keys.collect { |i|
 					if (length > bufLength) {
-						bufLength;
+						loopLengths[i.asInteger] = bufLength;
 					} {
-						length;
+						loopLengths[i.asInteger] = length;
 					}
 				};
+				loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
 				filledBuffers.addAll(recBufIns.keys);
 				statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
 				this.doneAction.value(recBufIns);
-				// if (touchOSC.class === NetAddr) {
-				// 	oscDisplay.(touchOSC, \written, bufIndex, prefix)
-				// };
 				recBufIns.clear;
 				onTime = nil;
 			}
@@ -283,6 +265,12 @@ SNSampler {
 
 		recBufInsModel = Ref(recBufIns);
 		recBufInsController = SimpleController(recBufInsModel);
+
+		loopLengthsModel = Ref(loopLengths);
+		loopLengthsController = SimpleController(loopLengthsModel);
+		loopLengthsController.put(\sampler, { |changer, what|
+			changer.value.postln
+		})
 	}
 
 }
