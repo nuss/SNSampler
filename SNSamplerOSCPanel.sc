@@ -158,22 +158,33 @@ SNSamplerOSCPanel {
 		var isSampling = false;
 
 		sampler.controllerKeys_(sampler.controllerKeys.add(\samplerOscPanel));
-		sampler.samplingController.put(sampler.controllerKeys[1], { |changer, what|
+
+		sampler.samplingController.put(\samplerOscPanel, { |changer, what|
 			isSampling = changer.value;
-			"sampling? %".format(isSampling).postln;
-			if (isSampling) {
-				this.oscAddr !? {
-					sampler.recBufIns.keys.do { |n|
-						"isSampling: %, recBuf: %".format(isSampling, n).postln;
-						this.oscAddr.sendMsg(this.cmdNameTemplates.bufferStatus.format(this.oscCmdPrefix, n+1), isSampling.asInteger)
+			this.oscAddr !? {
+				if (isSampling) {
+					sampler.recBufInsModel.value.keys.do { |n|
+						// keys are Symbols!!
+						this.oscAddr.sendMsg(
+							this.cmdNameTemplates.bufferStatus.format(this.oscCmdPrefix, n.asInteger+1),
+							isSampling.asInteger
+						);
+					}
+				} {
+					sampler.numBuffers.do { |i|
+						CVCenter.at(widgetNameTemplates.buffers.format(sampler.name, i+1).asSymbol).input_(0);
 					}
 				}
-			} {
-				this.oscAddr !? {
-					sampler.recBufIns.keys.do { |n|
-						"isSampling: %, recBuf: %".format(isSampling, n).postln;
-						this.oscAddr.sendMsg(this.cmdNameTemplates.selectBuffer.format(this.oscCmdPrefix, n+1), isSampling.asInteger)
-					}
+			}
+		});
+
+		sampler.statusController.put(\samplerOscPanel, { |changer, what|
+			this.oscAddr !? {
+				sampler.numBuffers.do { |i|
+					this.oscAddr.sendMsg(
+						this.cmdNameTemplates.bufferStatus.format(this.oscCmdPrefix, i+1),
+						changer.value.includes(i.asSymbol).asInteger
+					)
 				}
 			}
 		})
