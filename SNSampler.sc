@@ -1,12 +1,12 @@
 SNSampler {
 	classvar <all;
-	var <name, <numBuffers, <bufLength, /*<numChannels, */<server, <>touchOSC, <>touchOSCPanel, <>buffersPanel;
+	var <name, <numBuffers, <bufLength, <server, <>touchOSC, <ins, <inKeys;
 	var <recorder, <buffers, <backupBuffers, filledBuffers, bufnums;
 	// sampling status etc.
 	var <statusController, <statusModel, recBufIns, <recBufInsController, <recBufInsModel;
 	var loopLengths, <loopLengthsModel, <loopLengthsController;
 	var <samplingController, <samplingModel, onTime, offTime, blink;
-	var <inBus, soundIn, scopeBus, scopeWindow;
+	var scopeBus, scopeWindow;
 	var <>controllerKeys;
 	var <>doneAction;
 
@@ -14,7 +14,7 @@ SNSampler {
 		all = ();
 	}
 
-	*new { |name=\Sampler, numBuffers=5, bufLength=60, server, touchOSC, touchOSCPanel=1, buffersPanel=4|
+	*new { |name=\Sampler, numBuffers=5, bufLength=60, server, touchOSC, ins|
 		server ?? { server = Server.default };
 		^super.newCopyArgs(
 			name.asSymbol,
@@ -22,12 +22,12 @@ SNSampler {
 			bufLength,
 			server,
 			touchOSC,
-			touchOSCPanel,
-			buffersPanel
-		).init;
+		).init(ins);
 	}
 
 	init {
+		var inBusses, insSpec = \audioin.asSpec;
+
 		if (all.includesKey(name)) {
 			Error("A sampler under the name '%' already exists".format(name)).throw;
 		};
@@ -38,6 +38,11 @@ SNSampler {
 		filledBuffers = Set.new;
 		backupBuffers = nil ! numBuffers;
 		recBufIns = ();
+		ins ?? {
+			inBusses = (insSpec.minval..insSpec.maxval);
+			inKeys = inBusses.collect(_.asSymbol);
+			ins = inBusses.collect { |bus| bus.asSymbol -> bus }.asEvent;
+		};
 		this.prSetUpControllers;
 		server.waitForBoot {
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, completionMessage: { |b, i|
@@ -62,8 +67,6 @@ SNSampler {
 			recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
 			recorder.removeAt(bufIndex);
 		};
-		// 	// scopeBus = Bus.audio(server, numChannels);
-		// 	// Out.ar(scopeBus.index, soundIn);
 		// 	rawIn!2 * \bypassAmp.kr(0);
 		// };
 
@@ -100,6 +103,8 @@ SNSampler {
 	}
 
 	scope {
+		// scopeBus = Bus.audio(server, recBufIns.size);
+		// Out.ar(scopeBus.index, soundIn);
 		if (scopeWindow.isNil or: { scopeWindow.window.isClosed }) {
 			{
 				// scopeWindow = Stethoscope(server, numChannels, scopeBus.index);
@@ -154,19 +159,7 @@ SNSampler {
 		}, AppClock)
 	}
 
-	inBus_ { |in=0|
-		recorder.set(\in, in);
-	}
-
-	prCreateWidgets {
-		var prefix;
-
-		if (touchOSCPanel.notNil) {
-			prefix = "/" ++ touchOSCPanel;
-		} {
-			prefix = "";
-		};
-
+	/*prCreateWidgets {
 		this.cvCenterAddWidget("-bypass-amp", 0.0, \amp,
 			"{ |cv|
 				var sampler = SNSampler.all['%'],
@@ -180,7 +173,7 @@ SNSampler {
 			midiMode: 0, softWithin: 0
 		).oscConnect(touchOSC.ip, nil, "%/sampler_bypass".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
-	}
+	}*/
 
 	quit {
 		recorder.clear;

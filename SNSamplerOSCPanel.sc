@@ -1,6 +1,6 @@
 SNSamplerOSCPanel {
 	classvar <all;
-	var <sampler, <>oscAddr, <>oscCmdPrefix, <>backupBuffersPrefix, <ins;
+	var <sampler, <>oscAddr, <>oscCmdPrefix, <>backupBuffersPrefix;
 	var <>cmdNameTemplates;
 	var widgetNameTemplates, inNames;
 
@@ -8,7 +8,7 @@ SNSamplerOSCPanel {
 		all = ();
 	}
 
-	*new { |sampler, oscAddr, oscCmdPrefix="/sampler", backupBuffersPrefix, ins, cmdTemplates|
+	*new { |sampler, oscAddr, oscCmdPrefix="/sampler", backupBuffersPrefix, cmdTemplates|
 		if (sampler.isNil or: { sampler.class != SNSampler }) {
 			Error("A new SNSamplerOSCPanel needs an existing SNSampler instance!").throw;
 		} {
@@ -16,13 +16,13 @@ SNSamplerOSCPanel {
 				"A SNSamplerOSCPanel already for SNSampler '%' already exists".format(sampler.name).error;
 				^nil;
 			} {
-				^super.newCopyArgs(sampler, oscAddr, oscCmdPrefix, backupBuffersPrefix, ins).init(cmdTemplates);
+				^super.newCopyArgs(sampler, oscAddr, oscCmdPrefix, backupBuffersPrefix).init(cmdTemplates);
 			}
 		}
 	}
 
 	init { |cmdTemplates|
-		var inBusses, inKeys, insSpec = \audioin.asSpec, wName;
+		var wName;
 
 		all.put(sampler.name, this);
 		widgetNameTemplates = (
@@ -46,16 +46,11 @@ SNSamplerOSCPanel {
 		} {
 			this.cmdTemplates = cmdTemplates
 		};
-		ins ?? {
-			inBusses = (insSpec.minval..insSpec.maxval);
-			inKeys = inBusses.collect(_.asSymbol);
-			ins = inBusses.collect { |bus| bus.asSymbol -> bus }.asEvent;
-		};
 		sampler.controllerKeys = sampler.controllerKeys.add(\osc);
 
 		sampler.numBuffers.do { |i|
 			wName = widgetNameTemplates.ins.format(sampler.name, i+1).asSymbol;
-			CVCenter.use(wName, tab: sampler.name, svItems: inKeys ? [\nil]);
+			CVCenter.use(wName, tab: sampler.name, svItems: sampler.inKeys ? [\nil]);
 			this.oscAddr !? {
 				CVCenter.cvWidgets[wName].oscDisconnect.oscConnect(this.oscAddr.ip, name: this.cmdNameTemplates.selectInBus.format(this.oscCmdPrefix, i+1));
 			};
@@ -79,7 +74,7 @@ SNSamplerOSCPanel {
 			CVCenter.addActionAt(wName, 'activate buffer for sampling', "{ |sv|
 				var sampler = SNSampler.all['%'];
 				var oscPanel = SNSamplerOSCPanel.all['%'];
-				sampler.prepareRecording(sv.value.asBoolean, %, oscPanel.ins[CVCenter.at('%').item]);
+				sampler.prepareRecording(sv.value.asBoolean, %, sampler.ins[CVCenter.at('%').item]);
 				oscPanel.oscAddr !? {
 					oscPanel.oscAddr.sendMsg('%', sv.input)
 				}
@@ -150,7 +145,7 @@ SNSamplerOSCPanel {
 					CVCenter.at(widgetNameTemplates.ins.format(sampler.name, i+1)).items ++ inPairs.keys
 				)
 			};
-			ins.putAll(inPairs);
+			sampler.ins.putAll(inPairs);
 		}
 	}
 
