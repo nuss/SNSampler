@@ -50,6 +50,8 @@ SNSampler {
 			});
 			recorder = NodeProxy.audio(server, 1).pause;
 			"SNSampler: recorder initialized\nBuffers: %".format(buffers).postln;
+			scopeBus = Bus.audio(server, inBusses.size);
+			this.scope;
 		}
 	}
 
@@ -103,19 +105,20 @@ SNSampler {
 	}
 
 	scope {
-		// scopeBus = Bus.audio(server, recBufIns.size);
-		// Out.ar(scopeBus.index, soundIn);
+
+
 		if (scopeWindow.isNil or: { scopeWindow.window.isClosed }) {
 			{
-				// scopeWindow = Stethoscope(server, numChannels, scopeBus.index);
-				scopeWindow = Stethoscope(server, 1, scopeBus.index);
+				// scopeWindow = Stethoscope(server, numChannels, );
+				scopeWindow = Stethoscope(server, ins.size, scopeBus.index);
 				Stethoscope.ugenScopes.add(scopeWindow);
 				scopeWindow.window.onClose_({
 					scopeWindow.free;
-					// scopeBus.free;
 					Stethoscope.ugenScopes.remove(scopeWindow);
 				});
-				scopeWindow.window.name_(name ++ " in");
+				scopeWindow.window
+				.bounds_(Rect(0, Window.screenBounds.height, 200, 400))
+				.name_(name ++ " in");
 			}.defer(0.001);
 		}
 	}
@@ -186,12 +189,16 @@ SNSampler {
 	}
 
 	prRecorderFunc { |in, bufIndex|
+		var sig;
+
 		recBufIns.put(bufIndex.asSymbol, in);
 		recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
 		^{
-			BufWr.ar(SoundIn.ar(in), buffers[bufIndex].bufnum,
+			sig = SoundIn.ar(in);
+			BufWr.ar(sig, buffers[bufIndex].bufnum,
 				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
-			)
+			);
+			Out.ar(scopeBus.index + in, sig);
 		}
 	}
 
