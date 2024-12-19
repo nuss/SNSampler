@@ -6,6 +6,7 @@ SNSampler {
 	var <statusController, <statusModel, recBufIns, <recBufInsController, <recBufInsModel;
 	var loopLengths, <loopLengthsModel, <loopLengthsController;
 	var <samplingController, <samplingModel, onTime, offTime, blink;
+	var <inBussesController, <inBussesModel, inBusses;
 	var scopeBus, scopeWindow;
 	var <>controllerKeys;
 	var <>doneAction;
@@ -26,7 +27,7 @@ SNSampler {
 	}
 
 	init {
-		var inBusses, insSpec = \audioin.asSpec;
+		var insSpec = \audioin.asSpec;
 
 		if (all.includesKey(name)) {
 			Error("A sampler under the name '%' already exists".format(name)).throw;
@@ -38,8 +39,8 @@ SNSampler {
 		filledBuffers = Set.new;
 		backupBuffers = nil ! numBuffers;
 		recBufIns = ();
+		inBusses = (insSpec.minval..insSpec.maxval);
 		ins ?? {
-			inBusses = (insSpec.minval..insSpec.maxval);
 			inKeys = inBusses.collect(_.asSymbol);
 			ins = inBusses.collect { |bus| bus.asSymbol -> bus }.asEvent;
 		};
@@ -105,8 +106,6 @@ SNSampler {
 	}
 
 	scope {
-
-
 		if (scopeWindow.isNil or: { scopeWindow.window.isClosed }) {
 			{
 				// scopeWindow = Stethoscope(server, numChannels, );
@@ -120,6 +119,25 @@ SNSampler {
 				.bounds_(Rect(0, Window.screenBounds.height, 200, 400))
 				.name_(name ++ " in");
 			}.defer(0.001);
+		}
+	}
+
+	// name must be a CVCenterKeyboard instance's name
+	// if an effect chain has been added its output can be recorded by setting recordEffects to true
+	addKeyboardIns { |name, numChannels=2, recordEffects=false|
+		var bus, proxy;
+		name = name.asSymbol;
+		if (CVCenterKeyboard.at(name).notNil) {
+			bus = Bus.audio(server, numChannels);
+			proxy = NodeProxy.audio(server, numChannels);
+			if (recordEffects) {
+				// proxy.source = { In.ar(CVCenterKeyboard.at(name).outProxy.bus.index, numChannels) }
+			} {
+				proxy.source = { In.ar(CVCenterKeyboard.at(name).out, numChannels) }
+			};
+			proxy.play(bus.index);
+		} {
+			"CVCenterKeyboard.at('%') does not exist!".format(name).error;
 		}
 	}
 
@@ -268,8 +286,14 @@ SNSampler {
 
 		loopLengthsModel = Ref(loopLengths);
 		loopLengthsController = SimpleController(loopLengthsModel);
-		loopLengthsController.put(\sampler, { |changer, what|
+		/*loopLengthsController.put(\sampler, { |changer, what|
 			changer.value.postln
+		});*/
+
+		inBussesModel = Ref(inBusses);
+		inBussesController = SimpleController(inBusses);
+		inBussesController.put(\sampler, { |changer, what|
+
 		})
 	}
 
