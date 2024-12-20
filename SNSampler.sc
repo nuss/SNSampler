@@ -6,7 +6,10 @@ SNSampler {
 	var <statusController, <statusModel, recBufIns, <recBufInsController, <recBufInsModel;
 	var loopLengths, <loopLengthsModel, <loopLengthsController;
 	var <samplingController, <samplingModel, onTime, offTime, blink;
-	var <inBussesController, <inBussesModel, inBusses;
+	var <insController, <insModel, inBusses;
+	// counters, used for naming ins in external GUIs
+	// see addKeyboardIns
+	var additionalIns=1, keyboardIns=1, keyboardEffectsIns=1;
 	var scopeBus, scopeWindow;
 	var <>controllerKeys;
 	var <>doneAction;
@@ -39,10 +42,10 @@ SNSampler {
 		filledBuffers = Set.new;
 		backupBuffers = nil ! numBuffers;
 		recBufIns = ();
-		inBusses = (insSpec.minval..insSpec.maxval);
 		ins ?? {
+			inBusses = (insSpec.minval..insSpec.maxval);
 			inKeys = inBusses.collect(_.asSymbol);
-			ins = inBusses.collect { |bus| bus.asSymbol -> bus }.asEvent;
+			ins = inBusses.collect { |bus, i| inKeys[i] -> bus }.asEvent;
 		};
 		this.prSetUpControllers;
 		server.waitForBoot {
@@ -125,17 +128,35 @@ SNSampler {
 	// name must be a CVCenterKeyboard instance's name
 	// if an effect chain has been added its output can be recorded by setting recordEffects to true
 	addKeyboardIns { |name, numChannels=2, recordEffects=false|
-		var bus, proxy;
+		var bus, proxy, thisInKeys, thisInBusses;
 		name = name.asSymbol;
 		if (CVCenterKeyboard.at(name).notNil) {
-			bus = Bus.audio(server, numChannels);
-			proxy = NodeProxy.audio(server, numChannels);
 			if (recordEffects) {
+				if (CVCenterKeyboard.at(name).outProxy.notNil) {
+					bus = CVCenterKeyboard.at(name).outProxy.bus;
+					numChannels = bus.numChannels;
+					thisInKeys = numChannels.collect { |i| "kf%[%]".format(keyboardEffectsIns, i+1).asSymbol };
+					keyboardEffectsIns = keyboardEffectsIns + 1;
+				} {
+					"CVCenterKeyboard.at('%') has no effects chain added!".format(name).error;
+					^nil;
+				}
 				// proxy.source = { In.ar(CVCenterKeyboard.at(name).outProxy.bus.index, numChannels) }
 			} {
-				proxy.source = { In.ar(CVCenterKeyboard.at(name).out, numChannels) }
+				bus = Bus.audio(server, numChannels);
+				proxy = NodeProxy.audio(server, numChannels);
+				proxy.source = { In.ar(CVCenterKeyboard.at(name).out, numChannels) };
+				"recording keyboard on %".format(bus.index).postln;
+				proxy.play(bus.index);
+				bus.scope;
+				thisInKeys = numChannels.collect { |i| "k%[%]".format(keyboardIns, i+1).asSymbol };
+				keyboardIns = keyboardIns + 1;
 			};
-			proxy.play(bus.index);
+			inKeys = inKeys.addAll(thisInKeys);
+			thisInBusses = numChannels.collect { |i| bus.index + i };
+			inBusses = inBusses.addAll(thisInBusses);
+			ins = inBusses.collect { |bus, i| inKeys[i] -> bus }.asEvent;
+			insModel.value_([inKeys, inBusses]).changedKeys(this.controllerKeys);
 		} {
 			"CVCenterKeyboard.at('%') does not exist!".format(name).error;
 		}
@@ -211,12 +232,22 @@ SNSampler {
 
 		recBufIns.put(bufIndex.asSymbol, in);
 		recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
-		^{
-			sig = SoundIn.ar(in);
-			BufWr.ar(sig, buffers[bufIndex].bufnum,
-				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
-			);
-			Out.ar(scopeBus.index + in, sig);
+		if (in >= server.options.firstPrivateBus) {
+			^{
+				sig = In.ar(in);
+				BufWr.ar(sig, buffers[bufIndex].bufnum,
+					Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
+				);
+				Out.ar(scopeBus.index + in, sig);
+			}
+		} {
+			^{
+				sig = SoundIn.ar(in);
+				BufWr.ar(sig, buffers[bufIndex].bufnum,
+					Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
+				);
+				Out.ar(scopeBus.index + in, sig);
+			}
 		}
 	}
 
@@ -290,10 +321,16 @@ SNSampler {
 			changer.value.postln
 		});*/
 
-		inBussesModel = Ref(inBusses);
-		inBussesController = SimpleController(inBusses);
-		inBussesController.put(\sampler, { |changer, what|
-
+		insModel = Ref([inKeys, inBusses]);
+		insController = SimpleController(insModel);
+		insController.put(\sampler, { |changer, what|
+			var numChannels = changer.value[1].maxItem - changer.value[1].minItem;
+			scopeBus.free;
+			scopeBus = Bus.audio(server, numChannels);
+			if (scopeWindow.notNil and: { scopeWindow.window.isClosed.not }) {
+				// scopeWindow.index_(changer.value[1].minItem);
+				scopeWindow.numChannels_(numChannels);
+			}
 		})
 	}
 

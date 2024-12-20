@@ -182,6 +182,11 @@ SNSamplerOSCPanel {
 					)
 				}
 			}
+		});
+
+		sampler.insController.put(\samplerOscPanel, { |changer, what|
+			var inSelect = sampler.numBuffers.collect { |i| CVCenter.at(widgetNameTemplates.ins.format(sampler.name, i+1).asSymbol) };
+			inSelect.do { |sv| sv.items_(changer.value[0]) };
 		})
 	}
 }
