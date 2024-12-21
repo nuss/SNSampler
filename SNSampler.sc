@@ -44,6 +44,7 @@ SNSampler {
 		recBufIns = ();
 		ins ?? {
 			inBusses = (insSpec.minval..insSpec.maxval);
+			"input busses: %".format(inBusses).postln;
 			inKeys = inBusses.collect(_.asSymbol);
 			ins = inBusses.collect { |bus, i| inKeys[i] -> bus }.asEvent;
 		};
@@ -53,7 +54,6 @@ SNSampler {
 				bufnums[i] = b.bufnum;
 			});
 			recorder = NodeProxy.audio(server, 1).pause;
-			"SNSampler: recorder initialized\nBuffers: %".format(buffers).postln;
 			scopeBus = Bus.audio(server, inBusses.size);
 			this.scope;
 		}
@@ -103,8 +103,13 @@ SNSampler {
 	}
 
 	sample { |bool|
-		if (samplingModel.value == bool.not) {
-			samplingModel.value_(bool).changedKeys(this.controllerKeys)
+		if (recBufIns.size == 0) {
+			"Please select at least one buffer for recording!".error;
+			^nil;
+		} {
+			if (samplingModel.value == bool.not) {
+				samplingModel.value_(bool).changedKeys(this.controllerKeys)
+			}
 		}
 	}
 
@@ -133,7 +138,7 @@ SNSampler {
 		if (CVCenterKeyboard.at(name).notNil) {
 			if (recordEffects) {
 				if (CVCenterKeyboard.at(name).outProxy.notNil) {
-					bus = CVCenterKeyboard.at(name).outProxy.bus;
+					bus = CVCenterKeyboard.at(name).outProxy.bus.postln;
 					numChannels = bus.numChannels;
 					thisInKeys = numChannels.collect { |i| "kf%[%]".format(keyboardEffectsIns, i+1).asSymbol };
 					keyboardEffectsIns = keyboardEffectsIns + 1;
@@ -143,12 +148,11 @@ SNSampler {
 				}
 				// proxy.source = { In.ar(CVCenterKeyboard.at(name).outProxy.bus.index, numChannels) }
 			} {
+				"CVCenterKeyboard.at(name).out: %".format(CVCenterKeyboard.at(name).out).postln;
 				bus = Bus.audio(server, numChannels);
 				proxy = NodeProxy.audio(server, numChannels);
 				proxy.source = { In.ar(CVCenterKeyboard.at(name).out, numChannels) };
-				"recording keyboard on %".format(bus.index).postln;
 				proxy.play(bus.index);
-				bus.scope;
 				thisInKeys = numChannels.collect { |i| "k%[%]".format(keyboardIns, i+1).asSymbol };
 				keyboardIns = keyboardIns + 1;
 			};
@@ -228,26 +232,18 @@ SNSampler {
 	}
 
 	prRecorderFunc { |in, bufIndex|
-		var sig;
+		var sig, audioIn;
 
 		recBufIns.put(bufIndex.asSymbol, in);
 		recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
-		if (in >= server.options.firstPrivateBus) {
-			^{
-				sig = In.ar(in);
-				BufWr.ar(sig, buffers[bufIndex].bufnum,
-					Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
-				);
-				Out.ar(scopeBus.index + in, sig);
-			}
-		} {
-			^{
-				sig = SoundIn.ar(in);
-				BufWr.ar(sig, buffers[bufIndex].bufnum,
-					Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
-				);
-				Out.ar(scopeBus.index + in, sig);
-			}
+		"in: %, firstPrivateBus: %".format(in, server.options.firstPrivateBus).postln;
+		audioIn = if (in >= server.options.firstPrivateBus) { In } { SoundIn };
+		^{
+			sig = audioIn.ar(in);
+			BufWr.ar(sig, buffers[bufIndex].bufnum,
+				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
+			);
+			Out.ar(scopeBus.index + in, sig);
 		}
 	}
 
@@ -324,9 +320,11 @@ SNSampler {
 		insModel = Ref([inKeys, inBusses]);
 		insController = SimpleController(insModel);
 		insController.put(\sampler, { |changer, what|
-			var numChannels = changer.value[1].maxItem - changer.value[1].minItem;
+			var numChannels = changer.value[1].maxItem - changer.value[1].minItem +1;
+			var index = scopeBus.index;
+			"input channels: %".format(changer.value[1]).postln;
 			scopeBus.free;
-			scopeBus = Bus.audio(server, numChannels);
+			scopeBus = Bus(index: index, numChannels: numChannels, server: server);
 			if (scopeWindow.notNil and: { scopeWindow.window.isClosed.not }) {
 				// scopeWindow.index_(changer.value[1].minItem);
 				scopeWindow.numChannels_(numChannels);
