@@ -27,6 +27,7 @@ SNSamplePlayer : AbstractSNSampler {
 		looperName = (name ++ \Loops).asSymbol;
 		outName = (name ++ \Out).asSymbol;
 		trace = PatternProxy.new;
+		// this.prInitModelsAndControllers;
 	}
 
 	debug_ { |bool|
@@ -58,6 +59,7 @@ SNSamplePlayer : AbstractSNSampler {
 		this.buffers = bufferArray;
 
 		loopLengths = bufLength ! numBuffers;
+
 		this.prSetUpControls(volumeControlNode, useSplayAz);
 		// this.prInitPatternPlayer(bufferArray);
 	}

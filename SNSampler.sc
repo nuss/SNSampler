@@ -138,7 +138,7 @@ SNSampler {
 		if (CVCenterKeyboard.at(name).notNil) {
 			if (recordEffects) {
 				if (CVCenterKeyboard.at(name).outProxy.notNil) {
-					bus = CVCenterKeyboard.at(name).outProxy.bus.postln;
+					bus = CVCenterKeyboard.at(name).outProxy.bus;
 					numChannels = bus.numChannels;
 					thisInKeys = numChannels.collect { |i| "kf%[%]".format(keyboardEffectsIns, i+1).asSymbol };
 					keyboardEffectsIns = keyboardEffectsIns + 1;
@@ -164,6 +164,11 @@ SNSampler {
 		} {
 			"CVCenterKeyboard.at('%') does not exist!".format(name).error;
 		}
+	}
+
+	// inputs from private busses
+	addInputs { |inBus, inputName, numChannels=2, synthOut=0|
+
 	}
 
 	// only reset buffers reserved for writing
@@ -236,7 +241,7 @@ SNSampler {
 
 		recBufIns.put(bufIndex.asSymbol, in);
 		recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
-		"in: %, firstPrivateBus: %".format(in, server.options.firstPrivateBus).postln;
+		// "in: %, firstPrivateBus: %".format(in, server.options.firstPrivateBus).postln;
 		audioIn = if (in >= server.options.firstPrivateBus) { In } { SoundIn };
 		^{
 			sig = audioIn.ar(in);
@@ -258,8 +263,10 @@ SNSampler {
 			isSampling = changer.value;
 			if (isSampling) {
 				if (recBufIns.size > 0) {
-					"start sampling".postln;
-					/*recordBufIndices.do { |i|
+					"start sampling, recBufIns: %".format(recBufIns).postln;
+
+					recBufIns.do { |i|
+						i = i.asInteger;
 						bufIndex = backupBuffers.detectIndex { |buf|
 							buf.notNil and: { buf.buffer.bufnum == buffers[i].bufnum }
 						};
@@ -271,7 +278,7 @@ SNSampler {
 						// if (this.touchOSC.notNil and: { this.touchOSC.class === NetAddr}) {
 						// touchOSC.sendMsg(bufPprefix ++ "/switch_ext_buf" ++ (bufIndex+1), 0);
 					// }
-					};*/
+					};
 					onTime = Main.elapsedTime;
 					// if index is nil the buffer has likely been replaced by a pre-recorded one
 					// if buffer has been backed up, restore buffers with backed up buffer
@@ -299,7 +306,7 @@ SNSampler {
 				loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
 				filledBuffers.addAll(recBufIns.keys);
 				statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
-				this.doneAction.value(recBufIns);
+				this.doneAction.value(recBufIns.keys.asArray.asInteger.sort, loopLengths);
 				recBufIns.clear;
 				onTime = nil;
 			}
