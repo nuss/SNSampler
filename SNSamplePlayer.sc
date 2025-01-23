@@ -2,12 +2,12 @@ SNSamplePlayer : AbstractSNSampler {
 	classvar <all;
 	var <name, <bufLength, <mode, <numOutChannels, <>touchOSC, <>touchOSCPanel, <>bufferLoader, <>bufLoaderPanel;
 	var <>buffers, bufNums, numBuffers, <group, <backupBuffers;
-	var <server, <loopLengths;
+	var <server, <loopLengths, <sampler;
 	var <debug = false;
 	var looperName, outName, <looperPlayer, <def, <out;
 	var trace;
 
-	*new { |name=\Looper, bufLength=60, mode=\grain, numOutChannels=2, server, touchOSC, touchOSCPanel=1, bufferLoader, bufLoaderPanel=4|
+	*new { |name=\Looper, bufLength=60, mode=\grain, numOutChannels=2, server, touchOSC, touchOSCPanel=1, bufferLoader, bufLoaderPanel=4, samplerName|
 		^super.newCopyArgs(
 			name.asSymbol,
 			bufLength,
@@ -17,17 +17,39 @@ SNSamplePlayer : AbstractSNSampler {
 			touchOSCPanel,
 			bufferLoader,
 			bufLoaderPanel
-		).init(server);
+		).init(server, samplerName);
 	}
 
-	init { |server|
+	init { |server, samplerName|
 		all ?? { all = () };
 		all.put(name, this);
 		server ?? { server = Server.default };
 		looperName = (name ++ \Loops).asSymbol;
+		samplerName = samplerName.asSymbol;
+		if (samplerName.notNil and: { SNSampler.all(samplerName).notNil }) {
+			sampler = SNSampler.all[samplerName];
+			sampler.controllerKeys = sampler.controllerKeys.add(\looper);
+		};
 		outName = (name ++ \Out).asSymbol;
 		trace = PatternProxy.new;
-		// this.prInitModelsAndControllers;
+		this.prInitModelsAndControllers;
+	}
+
+	prInitModelsAndControllers {
+		sampler !? {
+			sampler.loopLengthsController.put(\looper, { |changer, what|
+				loopLengths = changer.value
+			});
+			sampler.recBufInsController.put(\looper, { |changer, what|
+				var widget, buffers = changer.value.keys.asArray.asInteger;
+				CVCenter.cvWidgets[(name ++ "Trig").asSymbol] !? {
+					widget = CVCenter.cvWidgets[(name ++ "Trig").asSymbol];
+					buffers.do { |i|
+						widget.split[i].value_(1)
+					}
+				}
+			})
+		}
 	}
 
 	debug_ { |bool|
@@ -152,11 +174,11 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ \ResetSpecs).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \ResetSpecs).asSymbol, 'reset specs', "{ |cv|
 			var osc = SNSamplePlayer.all['%'].touchOSC;
-			defer {
+			/*defer {
 				var name = ('%' ++ 'Dur').asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[0.1, 0.1]);
 				CVCenter.at(name).value_(0.1!CVCenter.at(name).size);
-			};
+			};*/
 			defer {
 				var name = ('%' ++ 'End').asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[0, 1, \lin, 0, 1]);
@@ -404,7 +426,9 @@ SNSamplePlayer : AbstractSNSampler {
 				CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, 1, tab: looperName);
 				CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
 				CVCenter.use((name ++ "Curve").asSymbol, #[-4, 4] ! numBuffers, 0, tab: looperName);
+				CVCenter.use((name ++ "Trig").asSymbol, nil ! numBuffers, 0, tab: looperName);
 				CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], 0.1 ! numBuffers, tab: looperName);
+				// CVCenter.use((name ++ "Dur").asSymbol, [0.1!numBuffers, loopLengths], loopLengths, tab: looperName);
 
 				def = Pdef(looperName,
 					Ppar({ |i|
@@ -413,6 +437,7 @@ SNSamplePlayer : AbstractSNSampler {
 							// buffers in the buffers array may start with a bufnum higher than 0
 							// so we check the bufnum by addressing the buffer at index i
 							\bufnum, buffers[i].bufnum,
+							\t_trig, CVCenter.cvWidgets[(name ++ "Trig").asSymbol].split(i),
 							\start, CVCenter.cvWidgets[(name ++ "Start").asSymbol].split[i],
 							\end, CVCenter.cvWidgets[(name ++ "End").asSymbol].split[i],
 							\brate, CVCenter.cvWidgets[(name ++ "Rate").asSymbol].split[i],

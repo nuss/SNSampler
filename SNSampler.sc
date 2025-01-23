@@ -153,10 +153,13 @@ SNSampler {
 				proxy = NodeProxy.audio(server, numChannels);
 				proxy.source = { In.ar(CVCenterKeyboard.at(name).out, numChannels) };
 				proxy.play(bus.index);
+				"recording keyboard on bus %".format(bus.index).postln;
 				thisInKeys = numChannels.collect { |i| "k%[%]".format(keyboardIns, i+1).asSymbol };
 				keyboardIns = keyboardIns + 1;
 			};
+			"inKeys before: %".format(inKeys).postln;
 			inKeys = inKeys.addAll(thisInKeys);
+			"inkeys after: %".format(inKeys).postln;
 			thisInBusses = numChannels.collect { |i| bus.index + i };
 			inBusses = inBusses.addAll(thisInBusses);
 			ins = inBusses.collect { |bus, i| inKeys[i] -> bus }.asEvent;
@@ -204,9 +207,9 @@ SNSampler {
 			};
 			statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
 			loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
-			if (doneAction.isFunction) {
-				doneAction.value;
-			}
+			// if (doneAction.isFunction) {
+			// 	doneAction.value;
+			// }
 		}, AppClock)
 	}
 
@@ -244,6 +247,7 @@ SNSampler {
 		// "in: %, firstPrivateBus: %".format(in, server.options.firstPrivateBus).postln;
 		audioIn = if (in >= server.options.firstPrivateBus) { In } { SoundIn };
 		^{
+			"creating recorder in for %".format(in).postln;
 			sig = audioIn.ar(in);
 			BufWr.ar(sig, buffers[bufIndex].bufnum,
 				Phasor.ar(0, BufRateScale.kr(buffers[bufIndex].bufnum), 0, BufFrames.kr(buffers[bufIndex].bufnum))
@@ -264,7 +268,6 @@ SNSampler {
 			if (isSampling) {
 				if (recBufIns.size > 0) {
 					"start sampling, recBufIns: %".format(recBufIns).postln;
-
 					recBufIns.do { |i|
 						i = i.asInteger;
 						bufIndex = backupBuffers.detectIndex { |buf|
@@ -303,6 +306,7 @@ SNSampler {
 						loopLengths[i.asInteger] = length;
 					}
 				};
+				recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
 				loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
 				filledBuffers.addAll(recBufIns.keys);
 				statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
