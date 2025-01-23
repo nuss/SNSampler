@@ -38,7 +38,12 @@ SNSamplePlayer : AbstractSNSampler {
 	prInitModelsAndControllers {
 		sampler !? {
 			sampler.loopLengthsController.put(\looper, { |changer, what|
-				loopLengths = changer.value
+				loopLengths = changer.value;
+				// set specs...TODO
+				defer {
+					CVCenter.cvWidgets[(name ++ "Start").asSymbol].setSpec([0!numBuffers, loopLengths/bufLength].asSpec);
+					CVCenter.cvWidgets[(name ++ "End").asSymbol].setSpec([0!numBuffers, loopLengths/bufLength].asSpec);
+				}
 			});
 			sampler.recBufInsController.put(\looper, { |changer, what|
 				var widget, buffers = changer.value.keys.asArray.asInteger;
@@ -47,7 +52,7 @@ SNSamplePlayer : AbstractSNSampler {
 					buffers.do { |i|
 						widget.split[i].value_(1)
 					}
-				}
+				};
 			})
 		}
 	}
