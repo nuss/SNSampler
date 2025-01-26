@@ -146,22 +146,22 @@ SNSampler {
 					"CVCenterKeyboard.at('%') has no effects chain added!".format(name).error;
 					^nil;
 				}
-				// proxy.source = { In.ar(CVCenterKeyboard.at(name).outProxy.bus.index, numChannels) }
 			} {
 				"CVCenterKeyboard.at(name).out: %".format(CVCenterKeyboard.at(name).out).postln;
-				bus = Bus.audio(server, numChannels);
+				// bus = Bus.audio(server, numChannels);
+				// bus = Bus.alloc(\audio, server, numChannels);
 				proxy = NodeProxy.audio(server, numChannels);
 				proxy.source = { In.ar(CVCenterKeyboard.at(name).out, numChannels) };
-				proxy.play(bus.index);
-				"recording keyboard on bus %".format(bus.index).postln;
+				bus = proxy.bus;
+				// proxy.play(bus.index);
+				// "recording keyboard on bus %".format(bus.index).postln;
 				thisInKeys = numChannels.collect { |i| "k%[%]".format(keyboardIns, i+1).asSymbol };
 				keyboardIns = keyboardIns + 1;
 			};
-			"inKeys before: %".format(inKeys).postln;
 			inKeys = inKeys.addAll(thisInKeys);
-			"inkeys after: %".format(inKeys).postln;
-			thisInBusses = numChannels.collect { |i| bus.index + i };
-			inBusses = inBusses.addAll(thisInBusses);
+			// thisInBusses = numChannels.collect { |i| bus.index + i };
+			thisInBusses = numChannels.collect { |i| bus.subBus(i).index };
+			inBusses = inBusses.addAll(thisInBusses).postln;
 			ins = inBusses.collect { |bus, i| inKeys[i] -> bus }.asEvent;
 			insModel.value_([inKeys, inBusses]).changedKeys(this.controllerKeys);
 		} {
