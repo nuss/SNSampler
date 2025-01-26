@@ -39,20 +39,20 @@ SNSamplePlayer : AbstractSNSampler {
 		sampler !? {
 			sampler.loopLengthsController.put(\looper, { |changer, what|
 				loopLengths = changer.value;
-				// set specs...TODO
-				defer {
-					CVCenter.cvWidgets[(name ++ "Start").asSymbol].setSpec([0!numBuffers, loopLengths/bufLength].asSpec);
-					CVCenter.cvWidgets[(name ++ "End").asSymbol].setSpec([0!numBuffers, loopLengths/bufLength].asSpec);
+				if (mode === \grain) {
+					defer {
+						CVCenter.at((name ++ "Start").asSymbol).spec_([0!numBuffers, loopLengths/bufLength].asSpec);
+						CVCenter.at((name ++ "End").asSymbol).spec_([0!numBuffers, loopLengths/bufLength].asSpec);
+					}
 				}
 			});
 			sampler.recBufInsController.put(\looper, { |changer, what|
 				var widget, buffers = changer.value.keys.asArray.asInteger;
-				CVCenter.cvWidgets[(name ++ "Trig").asSymbol] !? {
-					widget = CVCenter.cvWidgets[(name ++ "Trig").asSymbol];
+				if (mode === \grain) {
 					buffers.do { |i|
-						widget.split[i].value_(1)
+						CVCenter.cvWidgets[(name ++ "Trig").asSymbol].split[i].value_(1)
 					}
-				};
+				}
 			})
 		}
 	}
