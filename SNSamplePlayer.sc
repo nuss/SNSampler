@@ -1,7 +1,7 @@
 SNSamplePlayer : AbstractSNSampler {
 	classvar <all;
 	var <name, <bufLength, <mode, <numOutChannels, <>touchOSC, <>touchOSCPanel, <>bufferLoader, <>bufLoaderPanel;
-	var <>buffers, bufNums, numBuffers, <group, <backupBuffers;
+	var <>buffers, bufNums, <numBuffers, <group, <backupBuffers;
 	var <server, <loopLengths, <sampler;
 	var <debug = false;
 	var looperName, outName, <looperPlayer, <def, <out;
@@ -128,7 +128,7 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.addActionAt((name ++ \PauseResume).asSymbol, 'looper pause/resume', "{ |cv|
 			var player = SNSamplePlayer.all['%'],
 				osc = player.touchOSC;
-			if (cv.input.asBoolean) { player.resume } { player.pause };
+			if (cv.input.asBoolean) { player.resume.play } { player.pause };
 			if (osc.notNil and: { osc.class === NetAddr }) {
 				osc.sendMsg(\"%/looper_pause_resume\", cv.input)
 			}
@@ -217,21 +217,19 @@ SNSamplePlayer : AbstractSNSampler {
 		}".format(name, name, name, name, name, name, name, prefix));
 		CVCenter.cvWidgets[(name ++ \ResetSpecs).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_reset_specs".format(prefix)).setOscInputConstraints(Point(0, 1));
 
+		// moved from TouchOSC "sampler controls" to "controls1" - global out amplitudes
 		CVCenter.use((name ++ \ChanAmps).asSymbol, \amp ! numOutChannels, 1.0, (name ++ \Out).asSymbol);
-		CVCenter.addActionAt((name ++ \ChanAmps).asSymbol, 'set channel amps', "{ |cv|
+		CVCenter.addActionAt((name ++ \ChanAmps).asSymbol, 'set out channel amps', "{ |cv|
 			var player = SNSamplePlayer.all['%'],
 				osc = player.touchOSC;
 			player.out.set(('%' ++ 'ChanAmps').asSymbol, cv.value);
 			if (osc.notNil and: { osc.class === NetAddr }) {
 				player.numOutChannels.do { |i|
-					osc.sendMsg(\"%/looper_chan_amps/\" ++ (i+1), cv.input[i])
-				}
+					osc.sendMsg(\"/controls1/multislider1/\" ++ (i+1), cv.input[i])
+				};
+				osc.sendMsg(\"/controls1/multislider1/label\", \"out channel amplitudes\")
 			}
-		}".format(name, name, prefix));
-		numOutChannels.do { |i|
-			CVCenter.cvWidgets[(name ++ \ChanAmps).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_chan_amps/%".format(prefix, i+1), slot: i)
-			.setOscInputConstraints(Point(0, 1), i);
-		};
+		}".format(name, name));
 
 		// TouchOSC fader expected on panel 2
 		CVCenter.use((name ++ \Amp).asSymbol, \amp, 1.0, (name ++ \Out).asSymbol);
@@ -351,7 +349,26 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ "Start").asSymbol, [0!numBuffers, loopLengths/bufLength], tab: looperName);
 		CVCenter.use((name ++ "End").asSymbol, [0!numBuffers, loopLengths/bufLength], loopLengths/bufLength, looperName);
 		CVCenter.use((name ++ "Rate").asSymbol, #[-2, 2] ! numBuffers, 1.0, tab: looperName);
+		// amplitudes for each buffer == amplitudes of channels in Pdef
+		// directly connected to OSC interface as it likely doesn't make sense to control them through VideOSC
 		CVCenter.use((name ++ "GrainAmp").asSymbol, \amp ! numBuffers, tab: looperName);
+		CVCenter.addActionAt((name ++ \GrainAmp).asSymbol, 'set buffer channel amps', "{ |cv|
+			var player = SNSamplePlayer.all['%'],
+				osc = player.touchOSC;
+			if (osc.notNil and: { osc.class === NetAddr }) {
+				player.numBuffers.do { |i|
+					osc.sendMsg(\"%/looper_chan_amps/\" ++ (i+1), cv.input[i])
+				}
+			}
+		}".format(name, prefix));
+		// numOutChannels.do { |i|
+		// 	CVCenter.cvWidgets[(name ++ \ChanAmps).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_chan_amps/%".format(prefix, i+1), slot: i)
+		// 	.setOscInputConstraints(Point(0, 1), i);
+		// };
+		numBuffers.do { |i|
+			CVCenter.cvWidgets[(name ++ \GrainAmp).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_chan_amps/%".format(prefix, i+1), slot: i)/*
+			.setOscInputConstraints(Point(0, 1), i)*/;
+		};
 		CVCenter.use((name ++ \GrainAmpLag).asSymbol, \ampx4 ! numBuffers, tab: looperName);
 		CVCenter.use((name ++ \Legato).asSymbol, #[0.0, 1.0] ! numBuffers, 1.0, tab: looperName);
 
@@ -452,7 +469,7 @@ SNSamplePlayer : AbstractSNSampler {
 							// \dec, CVCenter.cvWidgets[(name ++ "Dec").asSymbol].split[i],
 							\curve, CVCenter.cvWidgets[(name ++ "Curve").asSymbol].split[i],
 							\dur, CVCenter.cvWidgets[(name ++ "Dur").asSymbol].split[i],
-							\amp, CVCenter.cvWidgets[(name ++ "GrainAmp").asSymbol].split[i],
+							\grainAmp, CVCenter.cvWidgets[(name ++ "GrainAmp").asSymbol].split[i],
 							\legato, CVCenter.cvWidgets[(name ++ "Legato").asSymbol].split[i],
 							\channelOffset, i,
 							\trace, trace
@@ -636,9 +653,10 @@ SNSamplePlayer : AbstractSNSampler {
 
 	setBuffer { |index, newBuffer|
 		var maxval, durCV, startCV, endCV, value;
+		// "[setBuffer] index: %, newBuffer: %".format(index, newBuffer).postln;
 		if (index >= numBuffers) {
 			"Can't add a buffer at the given index".inform;
-			^this;
+			^nil;
 		} {
 			// bufnums is an array of the bufnums of the array of buffers passed in with setupPlayer
 			// these buffers are likely not stored anywhere else. Hence we make sure they don't get lost
@@ -647,6 +665,7 @@ SNSamplePlayer : AbstractSNSampler {
 			};
 			this.buffers[index] = newBuffer;
 			loopLengths[index] = newBuffer.numFrames / newBuffer.sampleRate;
+			// "[setBuffer] loopLengths[%]: %".format(index, loopLengths[index]).postln;
 			durCV = CVCenter.at((name ++ \Dur).asSymbol);
 			startCV = CVCenter.at((name ++ \Start).asSymbol);
 			endCV = CVCenter.at((name ++ \End).asSymbol);
@@ -678,7 +697,7 @@ SNSamplePlayer : AbstractSNSampler {
 		var maxval, durCV, startCV, endCV, value;
 		if (index >= numBuffers) {
 			"Can't add a buffer at the given index".inform;
-			^this;
+			^nil;
 		} {
 			this.backupBuffers[index] !? {
 				this.buffers[index] = this.backupBuffers[index].buffer;
