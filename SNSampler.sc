@@ -132,27 +132,29 @@ SNSampler {
 
 	// name must be a CVCenterKeyboard instance's name
 	// if an effect chain has been added its output can be recorded by setting recordEffects to true
-	addKeyboardIns { |name, numChannels=2, recordEffects=false|
+	addKeyboardIns { |keyboardName, numChannels=2, recordEffects=false|
 		var bus, proxy, thisInKeys, thisInBusses;
-		name = name.asSymbol;
-		if (CVCenterKeyboard.at(name).notNil) {
+		keyboardName = keyboardName.asSymbol;
+		if (CVCenterKeyboard.at(keyboardName).notNil) {
 			if (recordEffects) {
-				if (CVCenterKeyboard.at(name).outProxy.notNil) {
-					bus = CVCenterKeyboard.at(name).outProxy.bus;
+				if (CVCenterKeyboard.at(keyboardName).outProxy.notNil) {
+					bus = CVCenterKeyboard.at(keyboardName).outProxy.bus;
 					numChannels = bus.numChannels;
+					"keyboard effects out bus index: %".format(bus.index).postln;
 					thisInKeys = numChannels.collect { |i| "kf%[%]".format(keyboardEffectsIns, i+1).asSymbol };
 					keyboardEffectsIns = keyboardEffectsIns + 1;
 				} {
-					"CVCenterKeyboard.at('%') has no effects chain added!".format(name).error;
+					"CVCenterKeyboard.at('%') has no effects chain added!".format(keyboardName).error;
 					^nil;
 				}
 			} {
-				"CVCenterKeyboard.at(name).out: %".format(CVCenterKeyboard.at(name).out).postln;
+				"CVCenterKeyboard.at('%').out: %".format(keyboardName, CVCenterKeyboard.at(keyboardName).out).postln;
 				// bus = Bus.audio(server, numChannels);
 				// bus = Bus.alloc(\audio, server, numChannels);
 				proxy = NodeProxy.audio(server, numChannels);
-				proxy.source = { In.ar(CVCenterKeyboard.at(name).out, numChannels) };
+				proxy.source = { In.ar(CVCenterKeyboard.at(keyboardName).out, numChannels) };
 				bus = proxy.bus;
+				"keyboard out dry bus index: %".format(bus.index).postln;
 				// proxy.play(bus.index);
 				// "recording keyboard on bus %".format(bus.index).postln;
 				thisInKeys = numChannels.collect { |i| "k%[%]".format(keyboardIns, i+1).asSymbol };
@@ -165,7 +167,7 @@ SNSampler {
 			ins = inBusses.collect { |bus, i| inKeys[i] -> bus }.asEvent;
 			insModel.value_([inKeys, inBusses]).changedKeys(this.controllerKeys);
 		} {
-			"CVCenterKeyboard.at('%') does not exist!".format(name).error;
+			"CVCenterKeyboard.at('%') does not exist!".format(keyboardName).error;
 		}
 	}
 
