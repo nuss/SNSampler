@@ -72,34 +72,7 @@ SNSampler {
 			recBufIns[bufIndex.asSymbol] = nil;
 			recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
 			recorder.removeAt(bufIndex);
-		};
-		// 	rawIn!2 * \bypassAmp.kr(0);
-		// };
-
-		// this.scope;
-		// this.prCreateWidgets;
-
-		// oscDisplay = { |addr, mode, bufIndex, panelPrefix|
-		// 	blink ?? {
-		// 		blink = fork({
-		// 			loop {
-		// 				// "blink".postln;
-		// 				addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 0);
-		// 				1.wait;
-		// 				addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1);
-		// 				1.wait
-		// 			}
-		// 		}, AppClock);
-		// 	};
-		//
-		// 	switch(mode)
-		// 	{ \blink } { blink.play(AppClock) }
-		// 	{ \written } {
-		// 		blink.reset.stop;
-		// 		// "written".postln;
-		// 		addr.sendMsg("%/sample_buf_%".format(panelPrefix, bufIndex), 1)
-		// 	};
-		// };
+		}
 	}
 
 	sample { |bool|
@@ -209,27 +182,8 @@ SNSampler {
 			};
 			statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
 			loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
-			// if (doneAction.isFunction) {
-			// 	doneAction.value;
-			// }
 		}, AppClock)
 	}
-
-	/*prCreateWidgets {
-		this.cvCenterAddWidget("-bypass-amp", 0.0, \amp,
-			"{ |cv|
-				var sampler = SNSampler.all['%'],
-					osc = sampler.touchOSC;
-				sampler.recorder.set(\\bypassAmp, cv.value);
-				if (osc.notNil and: { osc.class === NetAddr }) {
-					osc.sendMsg(\"%/sampler_bypass\", cv.input);
-				}
-			}".format(name, prefix),
-			(name ++ \Sampler).asSymbol,
-			midiMode: 0, softWithin: 0
-		).oscConnect(touchOSC.ip, nil, "%/sampler_bypass".format(prefix))
-		.setOscInputConstraints(Point(0, 1));
-	}*/
 
 	quit {
 		recorder.clear;
@@ -260,7 +214,7 @@ SNSampler {
 
 	prSetUpControllers {
 		var length, bufIndices, bufIndex, bufnums, bufnum, bufPprefix;
-		var isSampling = false;
+		var isSampling = false, i;
 
 		samplingModel = Ref(isSampling);
 		samplingController = SimpleController(samplingModel);
@@ -270,11 +224,12 @@ SNSampler {
 			if (isSampling) {
 				if (recBufIns.size > 0) {
 					"start sampling, recBufIns: %".format(recBufIns).postln;
-					recBufIns.do { |i|
-						i = i.asInteger;
+					recBufIns.pairsDo { |k, v|
+						i = k.asInteger;
 						bufIndex = backupBuffers.detectIndex { |buf|
 							buf.notNil and: { buf.buffer.bufnum == buffers[i].bufnum }
 						};
+						"sampling to backed up buffer %".format(i).postln;
 						// "bufIndex: %".format(bufIndex).postln;
 						bufIndex !? {
 							buffers[i] = backupBuffers[bufIndex].buffer;

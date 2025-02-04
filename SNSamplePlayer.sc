@@ -334,6 +334,7 @@ SNSamplePlayer : AbstractSNSampler {
 					if (cv.input.booleanValue) {
 						player.setBuffer(%, player.bufferLoader.buffers[CVCenter.at(('%' ++ 'SelectBuf' ++ %).asSymbol).value]);
 					} {
+						\"resetting buffer\".postln;
 						player.resetBuffer(%);
 					};
 					if (osc.notNil and: { osc.class === NetAddr}) {
@@ -469,7 +470,7 @@ SNSamplePlayer : AbstractSNSampler {
 							// \dec, CVCenter.cvWidgets[(name ++ "Dec").asSymbol].split[i],
 							\curve, CVCenter.cvWidgets[(name ++ "Curve").asSymbol].split[i],
 							\dur, CVCenter.cvWidgets[(name ++ "Dur").asSymbol].split[i],
-							\grainAmp, CVCenter.cvWidgets[(name ++ "GrainAmp").asSymbol].split[i],
+							\amp, CVCenter.cvWidgets[(name ++ "GrainAmp").asSymbol].split[i],
 							\legato, CVCenter.cvWidgets[(name ++ "Legato").asSymbol].split[i],
 							\channelOffset, i,
 							\trace, trace
@@ -661,6 +662,7 @@ SNSamplePlayer : AbstractSNSampler {
 			// bufnums is an array of the bufnums of the array of buffers passed in with setupPlayer
 			// these buffers are likely not stored anywhere else. Hence we make sure they don't get lost
 			if (bufNums.includes(this.buffers[index].bufnum)) {
+				"backing up buffer %, loop length: %".format(index, loopLengths[index]).postln;
 				backupBuffers[index] = (buffer: this.buffers[index], length: loopLengths[index]);
 			};
 			this.buffers[index] = newBuffer;
@@ -699,10 +701,11 @@ SNSamplePlayer : AbstractSNSampler {
 			"Can't add a buffer at the given index".inform;
 			^nil;
 		} {
-			this.backupBuffers[index] !? {
-				this.buffers[index] = this.backupBuffers[index].buffer;
-				loopLengths[index] = this.backupBuffers[index].length;
-				this.backupBuffers[index] = nil;
+			backupBuffers[index] !? {
+				this.buffers[index] = backupBuffers[index].buffer;
+				loopLengths[index] = backupBuffers[index].length;
+				"setting buffer % from backup buffers, loop length: %".format(index, backupBuffers[index].length);
+				backupBuffers[index] = nil;
 			};
 			startCV = CVCenter.at((name ++ \Start).asSymbol);
 			endCV = CVCenter.at((name ++ \End).asSymbol);
