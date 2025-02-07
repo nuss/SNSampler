@@ -38,11 +38,14 @@ SNSamplePlayer : AbstractSNSampler {
 	prInitModelsAndControllers {
 		sampler !? {
 			sampler.loopLengthsController.put(\looper, { |changer, what|
+				"loopLengthsController triggered at key 'looper'".postln;
 				loopLengths = changer.value;
 				if (mode === \grain) {
+
 					defer {
 						CVCenter.at((name ++ "Start").asSymbol).spec_([0!numBuffers, loopLengths/bufLength].asSpec);
 						CVCenter.at((name ++ "End").asSymbol).spec_([0!numBuffers, loopLengths/bufLength].asSpec);
+						CVCenter.at((name ++ "Dur").asSymbol).spec_([0.1!numBuffers, loopLengths].asSpec);
 					}
 				}
 			});
@@ -89,23 +92,6 @@ SNSamplePlayer : AbstractSNSampler {
 
 		this.prSetUpControls(volumeControlNode, useSplayAz);
 		// this.prInitPatternPlayer(bufferArray);
-	}
-
-	prSetSpecConstraints { |index, length|
-		CVCenter.at((name ++ \Start).asSymbol).spec.maxval[index] = length / bufLength;
-		CVCenter.at((name ++ \End).asSymbol).spec.maxval[index] = length / bufLength;
-		// "before - index: %, length: %, loopCVs.dur.spec.maxval[index]: %\n".postf(index, length, loopCVs.dur.spec.maxval[index]);
-		CVCenter.at((name ++ \Dur).asSymbol).spec.maxval[index] = length;
-		// "after - index: %, length: %, loopCVs.dur.spec.maxval[index]: %\n".postf(index, length, loopCVs.dur.spec.maxval[index]);
-
-		if (this.debug) {
-			"buffer index: %\ndur maxval: %\n".postf(
-				index,
-				CVCenter.at((name ++ \Start).asSymbol).spec.maxval,
-				CVCenter.at((name ++ \End).asSymbol).spec.maxval,
-				CVCenter.at((name ++ \Dur).asSymbol).spec.maxval
-			)
-		}
 	}
 
 	prSetUpControls { |volumeControl, useSplayAz|
@@ -653,7 +639,7 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	setBuffer { |index, newBuffer|
-		var maxval, durCV, startCV, endCV, value;
+		var maxval, durCV, startCV, endCV, value, durval;
 		// "[setBuffer] index: %, newBuffer: %".format(index, newBuffer).postln;
 		if (index >= numBuffers) {
 			"Can't add a buffer at the given index".inform;
@@ -666,7 +652,8 @@ SNSamplePlayer : AbstractSNSampler {
 				backupBuffers[index] = (buffer: this.buffers[index], length: loopLengths[index]);
 			};
 			this.buffers[index] = newBuffer;
-			loopLengths[index] = newBuffer.numFrames / newBuffer.sampleRate;
+			// loopLengths[index] = newBuffer.numFrames / newBuffer.sampleRate;
+			// sampler.loopLengthsModel.value_(loopLengths).changedKeys(sampler.controllerKeys);
 			// "[setBuffer] loopLengths[%]: %".format(index, loopLengths[index]).postln;
 			durCV = CVCenter.at((name ++ \Dur).asSymbol);
 			startCV = CVCenter.at((name ++ \Start).asSymbol);
@@ -674,9 +661,10 @@ SNSamplePlayer : AbstractSNSampler {
 			// the new buffer will presumably be filled from start to end
 			// hence, we reset specs and values of CVs
 			durCV !? {
-				durCV.spec.maxval[index] = loopLengths[index];
+				durval = newBuffer.numFrames / newBuffer.sampleRate;
+				durCV.spec.maxval[index] = durval;
 				value = durCV.value;
-				value[index] = loopLengths[index];
+				value[index] = durval;
 				durCV.value_(value);
 			};
 			startCV !? {
@@ -703,8 +691,9 @@ SNSamplePlayer : AbstractSNSampler {
 		} {
 			backupBuffers[index] !? {
 				this.buffers[index] = backupBuffers[index].buffer;
-				loopLengths[index] = backupBuffers[index].length;
-				"setting buffer % from backup buffers, loop length: %".format(index, backupBuffers[index].length);
+				// loopLengths[index] = backupBuffers[index].length;
+				// sampler.loopLengthsModel.value_(loopLengths).changedKeys(sampler.controllerKeys);
+				"setting buffer % from backup buffers, loop length: %".format(index, backupBuffers[index].length).postln;
 				backupBuffers[index] = nil;
 			};
 			startCV = CVCenter.at((name ++ \Start).asSymbol);
