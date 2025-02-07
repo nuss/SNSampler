@@ -167,7 +167,7 @@ The mode to which the SNSamplePlayer has been initialized: code::\grain::, code:
 
 returns:: A link::Classes/Symbol::
 
-PRIVATE::init, prSetUpControls, prSetSpecConstraints, prInitPatternPlayer
+PRIVATE::init, prSetUpControls, prInitPatternPlayer
 
 
 EXAMPLES::
