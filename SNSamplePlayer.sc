@@ -37,11 +37,10 @@ SNSamplePlayer : AbstractSNSampler {
 
 	prInitModelsAndControllers {
 		sampler !? {
-			sampler.loopLengthsController.put(\looper, { |changer, what|
-				"loopLengthsController triggered at key 'looper'".postln;
+			sampler.mc.loopLengthsController.put(\looper, { |changer, what|
+				"sampler.mc.loopLengthsController triggered at key 'looper'".postln;
 				loopLengths = changer.value;
 				if (mode === \grain) {
-
 					defer {
 						CVCenter.at((name ++ "Start").asSymbol).spec_([0!numBuffers, loopLengths/bufLength].asSpec);
 						CVCenter.at((name ++ "End").asSymbol).spec_([0!numBuffers, loopLengths/bufLength].asSpec);
@@ -49,7 +48,7 @@ SNSamplePlayer : AbstractSNSampler {
 					}
 				}
 			});
-			sampler.recBufInsController.put(\looper, { |changer, what|
+			sampler.mc.recBufInsController.put(\looper, { |changer, what|
 				var widget, buffers = changer.value.keys.asArray.asInteger;
 				if (mode === \grain) {
 					buffers.do { |i|
@@ -432,6 +431,7 @@ SNSamplePlayer : AbstractSNSampler {
 		switch(mode,
 			\grain, {
 				CVCenter.use((name ++ "Atk").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
+				CVCenter.use((name ++ "Dec").asSymbol, #[0.1, 3] ! numBuffers, tab: looperName);
 				CVCenter.use((name ++ "Sust").asSymbol, #[0.1, 1.0] ! numBuffers, 1, tab: looperName);
 				CVCenter.use((name ++ "Rel").asSymbol, #[0.02, 3, \exp] ! numBuffers, tab: looperName);
 				CVCenter.use((name ++ "Curve").asSymbol, #[-4, 4] ! numBuffers, 0, tab: looperName);
@@ -653,7 +653,7 @@ SNSamplePlayer : AbstractSNSampler {
 			};
 			this.buffers[index] = newBuffer;
 			// loopLengths[index] = newBuffer.numFrames / newBuffer.sampleRate;
-			// sampler.loopLengthsModel.value_(loopLengths).changedKeys(sampler.controllerKeys);
+			// sampler.mc.loopLengthsModel.value_(loopLengths).changedKeys(sampler.controllerKeys);
 			// "[setBuffer] loopLengths[%]: %".format(index, loopLengths[index]).postln;
 			durCV = CVCenter.at((name ++ \Dur).asSymbol);
 			startCV = CVCenter.at((name ++ \Start).asSymbol);
@@ -692,7 +692,7 @@ SNSamplePlayer : AbstractSNSampler {
 			backupBuffers[index] !? {
 				this.buffers[index] = backupBuffers[index].buffer;
 				// loopLengths[index] = backupBuffers[index].length;
-				// sampler.loopLengthsModel.value_(loopLengths).changedKeys(sampler.controllerKeys);
+				// sampler.mc.loopLengthsModel.value_(loopLengths).changedKeys(sampler.controllerKeys);
 				"setting buffer % from backup buffers, loop length: %".format(index, backupBuffers[index].length).postln;
 				backupBuffers[index] = nil;
 			};

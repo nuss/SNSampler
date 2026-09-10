@@ -3,10 +3,11 @@ SNSampler {
 	var <name, <numBuffers, <bufLength, <server, <>touchOSC, <ins, <inKeys;
 	var <recorder, <buffers, <backupBuffers, filledBuffers, bufnums;
 	// sampling status etc.
-	var <statusController, <statusModel, recBufIns, <recBufInsController, <recBufInsModel;
-	var loopLengths, <loopLengthsModel, <loopLengthsController;
-	var <samplingController, <samplingModel, onTime, offTime, blink;
-	var <insController, <insModel, inBusses;
+	var recBufIns;
+	var loopLengths;
+	var onTime, offTime, blink;
+	var inBusses;
+	var <mc;
 	// counters, used for naming ins in external GUIs
 	// see addKeyboardIns
 	var additionalIns=1, keyboardIns=1, keyboardEffectsIns=1;
@@ -70,7 +71,7 @@ SNSampler {
 			recorder.put(bufIndex, this.prRecorderFunc(in, bufIndex));
 		} {
 			recBufIns[bufIndex.asSymbol] = nil;
-			recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
+			mc.recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
 			recorder.removeAt(bufIndex);
 		}
 	}
@@ -80,8 +81,8 @@ SNSampler {
 			"Please select at least one buffer for recording!".error;
 			^nil;
 		} {
-			if (samplingModel.value == bool.not) {
-				samplingModel.value_(bool).changedKeys(this.controllerKeys)
+			if (mc.samplingModel.value == bool.not) {
+				mc.samplingModel.value_(bool).changedKeys(this.controllerKeys)
 			}
 		}
 	}
@@ -138,7 +139,7 @@ SNSampler {
 			thisInBusses = numChannels.collect { |i| bus.subBus(i).index };
 			inBusses = inBusses.addAll(thisInBusses).postln;
 			ins = inBusses.collect { |bus, i| inKeys[i] -> bus }.asEvent;
-			insModel.value_([inKeys, inBusses]).changedKeys(this.controllerKeys);
+			mc.insModel.value_([inKeys, inBusses]).changedKeys(this.controllerKeys);
 		} {
 			"CVCenterKeyboard.at('%') does not exist!".format(keyboardName).error;
 		}
@@ -180,8 +181,8 @@ SNSampler {
 				};
 				filledBuffers.remove(index.asSymbol);
 			};
-			statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
-			loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
+			mc.statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
+			mc.loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
 		}, AppClock)
 	}
 
@@ -199,7 +200,7 @@ SNSampler {
 		var sig, audioIn;
 
 		recBufIns.put(bufIndex.asSymbol, in);
-		recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
+		mc.recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
 		// "in: %, firstPrivateBus: %".format(in, server.options.firstPrivateBus).postln;
 		audioIn = if (in >= server.options.firstPrivateBus) { In } { SoundIn };
 		^{
@@ -216,10 +217,11 @@ SNSampler {
 		var length, bufIndices, bufIndex, bufnums, bufnum, bufPprefix;
 		var isSampling = false, i;
 
-		samplingModel = Ref(isSampling);
-		samplingController = SimpleController(samplingModel);
-		samplingController.put(\sampler, { |changer, what|
+		mc = ();
 
+		mc.samplingModel = Ref(isSampling);
+		mc.samplingController = SimpleController(mc.samplingModel);
+		mc.samplingController.put(\sampler, { |changer, what|
 			isSampling = changer.value;
 			if (isSampling) {
 				if (recBufIns.size > 0) {
@@ -263,31 +265,31 @@ SNSampler {
 						loopLengths[i.asInteger] = length;
 					}
 				};
-				recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
-				loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
+				mc.recBufInsModel.value_(recBufIns).changedKeys(this.controllerKeys);
+				mc.loopLengthsModel.value_(loopLengths).changedKeys(this.controllerKeys);
 				filledBuffers.addAll(recBufIns.keys);
-				statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
+				mc.statusModel.value_(filledBuffers).changedKeys(this.controllerKeys);
 				this.doneAction.value(recBufIns.keys.asArray.asInteger.sort, loopLengths);
 				recBufIns.clear;
 				onTime = nil;
 			}
 		});
 
-		statusModel = Ref(filledBuffers);
-		statusController = SimpleController(statusModel);
+		mc.statusModel = Ref(filledBuffers);
+		mc.statusController = SimpleController(mc.statusModel);
 
-		recBufInsModel = Ref(recBufIns);
-		recBufInsController = SimpleController(recBufInsModel);
+		mc.recBufInsModel = Ref(recBufIns);
+		mc.recBufInsController = SimpleController(mc.recBufInsModel);
 
-		loopLengthsModel = Ref(loopLengths);
-		loopLengthsController = SimpleController(loopLengthsModel);
+		mc.loopLengthsModel = Ref(loopLengths);
+		mc.loopLengthsController = SimpleController(mc.loopLengthsModel);
 		/*loopLengthsController.put(\sampler, { |changer, what|
 			changer.value.postln
 		});*/
 
-		insModel = Ref([inKeys, inBusses]);
-		insController = SimpleController(insModel);
-		insController.put(\sampler, { |changer, what|
+		mc.insModel = Ref([inKeys, inBusses]);
+		mc.insController = SimpleController(mc.insModel);
+		mc.insController.put(\sampler, { |changer, what|
 			var numChannels = changer.value[1].maxItem - changer.value[1].minItem +1;
 			var index = scopeBus.index;
 			"input channels: %".format(changer.value[1]).postln;

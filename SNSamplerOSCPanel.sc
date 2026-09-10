@@ -118,13 +118,18 @@ SNSamplerOSCPanel {
 		}".format(sampler.name, sampler.name));
 		wName = widgetNameTemplates.startStop.format(sampler.name).asSymbol;
 		CVCenter.use(wName, \false, tab: sampler.name);
+		CVCenter.cvWidgets[wName].setSoftWithin(0);
 		this.oscAddr !? {
 			CVCenter.cvWidgets[wName].oscDisconnect.oscConnect(this.oscAddr.ip, name: this.cmdNameTemplates.startStop.format(this.oscCmdPrefix))
 		};
 		CVCenter.addActionAt(wName, 'start/stop sampling', "{ |cv|
 			var sampler = SNSampler.all['%'];
+			var oscPanel = SNSamplerOSCPanel.all['%'];
 			sampler.sample(cv.input.asBoolean);
-		}".format(sampler.name));
+			oscPanel.oscAddr !? {
+				oscPanel.oscAddr.sendMsg(oscPanel.cmdNameTemplates.startStop.format(oscPanel.oscCmdPrefix), cv.input)
+			}
+		}".format(sampler.name, sampler.name));
 
 		this.prInitController;
 	}
@@ -154,11 +159,11 @@ SNSamplerOSCPanel {
 
 		sampler.controllerKeys_(sampler.controllerKeys.add(\samplerOscPanel));
 
-		sampler.samplingController.put(\samplerOscPanel, { |changer, what|
+		sampler.mc.samplingController.put(\samplerOscPanel, { |changer, what|
 			isSampling = changer.value;
 			this.oscAddr !? {
 				if (isSampling) {
-					sampler.recBufInsModel.value.keys.do { |n|
+					sampler.mc.recBufInsModel.value.keys.do { |n|
 						// keys are Symbols!!
 						this.oscAddr.sendMsg(
 							this.cmdNameTemplates.bufferStatus.format(this.oscCmdPrefix, n.asInteger+1),
@@ -173,7 +178,7 @@ SNSamplerOSCPanel {
 			}
 		});
 
-		sampler.statusController.put(\samplerOscPanel, { |changer, what|
+		sampler.mc.statusController.put(\samplerOscPanel, { |changer, what|
 			this.oscAddr !? {
 				sampler.numBuffers.do { |i|
 					this.oscAddr.sendMsg(
@@ -184,7 +189,7 @@ SNSamplerOSCPanel {
 			}
 		});
 
-		sampler.insController.put(\samplerOscPanel, { |changer, what|
+		sampler.mc.insController.put(\samplerOscPanel, { |changer, what|
 			var inSelect = sampler.numBuffers.collect { |i| CVCenter.at(widgetNameTemplates.ins.format(sampler.name, i+1).asSymbol) };
 			inSelect.do { |sv| sv.items_(changer.value[0]) };
 		})
