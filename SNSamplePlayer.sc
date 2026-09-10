@@ -7,6 +7,10 @@ SNSamplePlayer : AbstractSNSampler {
 	var looperName, outName, <looperPlayer, <def, <out;
 	var trace;
 
+	*initClass {
+		all = ();
+	}
+
 	*new { |name=\Looper, bufLength=60, mode=\grain, numOutChannels=2, server, touchOSC, touchOSCPanel=1, bufferLoader, bufLoaderPanel=4, samplerName|
 		^super.newCopyArgs(
 			name.asSymbol,
@@ -21,7 +25,6 @@ SNSamplePlayer : AbstractSNSampler {
 	}
 
 	init { |server, samplerName|
-		all ?? { all = () };
 		all.put(name, this);
 		server ?? { server = Server.default };
 		looperName = (name ++ \Loops).asSymbol;
@@ -728,7 +731,8 @@ SNSamplePlayer : AbstractSNSampler {
 		Ndef(outName).clear(fadeTime);
 		fork {
 			fadeTime.wait;
-			[Ndef(looperName), Pdef(looperName)].do(_.clear);
+			// [Ndef(looperName), Pdef(looperName)].do(_.clear);
+			this.looperPlayer.clear;
 			all[name] = nil;
 		}
 	}

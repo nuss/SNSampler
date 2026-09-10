@@ -191,6 +191,19 @@ SNSampler {
 		buffers.do { |b|
 			b.close.free;
 		};
+		this.mc.do { |it|
+			if (it.class == SimpleController) { it.remove }
+		};
+		\SNSamplePlayer.asClass !? {
+			\SNSamplePlayer.asClass.all.select { |p| p.sampler === this }.do { |player|
+				player.pause.quit.postln;
+			}
+		};
+		\SNSamplerOSCPanel.asClass !? {
+			\SNSamplerOSCPanel.asClass.all.detect { |p| p.sampler === this }.do { |p|
+				\SNSamplerOSCPanel.asClass.all.removeAt(this.name)
+			}
+		};
 		scopeWindow.quit;
 		scopeWindow = nil;
 		all[name] = nil;
