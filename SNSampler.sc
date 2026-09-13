@@ -1,7 +1,8 @@
 SNSampler {
-	classvar <all;
+	classvar <all, <env;
 	var <name, <numBuffers, <bufLength, <server, <>touchOSC, <ins, <inKeys;
-	var <recorder, <buffers, <backupBuffers, filledBuffers, bufnums;
+	var <recorder, <buffers, <insBuffer, <backupBuffers, filledBuffers, bufnums;
+	var <insScopeSynth;
 	// sampling status etc.
 	var recBufIns;
 	var loopLengths;
@@ -17,6 +18,7 @@ SNSampler {
 
 	*initClass {
 		all = ();
+		env = ();
 	}
 
 	*new { |name=\Sampler, numBuffers=5, bufLength=60, server, touchOSC, ins|
@@ -30,7 +32,7 @@ SNSampler {
 		).init(ins);
 	}
 
-	init {
+	init { |ins|
 		var insSpec = \audioin.asSpec;
 
 		if (all.includesKey(name)) {
@@ -45,18 +47,22 @@ SNSampler {
 		recBufIns = ();
 		ins ?? {
 			inBusses = (insSpec.minval..insSpec.maxval);
-			"input busses: %".format(inBusses).postln;
 			inKeys = inBusses.collect(_.asSymbol);
 			ins = inBusses.collect { |bus, i| inKeys[i] -> bus }.asEvent;
 		};
 		this.prSetUpControllers;
 		server.waitForBoot {
+			insBuffer = Buffer.alloc(server, 1024, numBuffers);
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, completionMessage: { |b, i|
 				bufnums[i] = b.bufnum;
 			});
+			server.sync;
+			// insScopeSynth = Synth(\scopeIns, [\inBus, inBusses, \bufnum, insBuffer.bufnum]);
+			SNSamplerGui(this).front;
 			recorder = NodeProxy.audio(server, 1).pause;
-			scopeBus = Bus.audio(server, inBusses.size);
-			this.scope;
+			// scopeBus = Bus.audio(server, inBusses.size);
+			//
+			// this.scope;
 		}
 	}
 
