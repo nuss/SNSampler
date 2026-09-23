@@ -1,8 +1,7 @@
 SNSampler {
 	classvar <all, <env;
 	var <name, <numBuffers, <bufLength, <server, <>touchOSC, <ins, <inKeys;
-	var <recorder, <buffers, <insBuffer, <backupBuffers, filledBuffers, bufnums;
-	var <insScopeSynth;
+	var <recorder, <buffers, <insBuffer, <recInsBuffer, <backupBuffers, filledBuffers, bufnums;
 	// sampling status etc.
 	var recBufIns;
 	var loopLengths;
@@ -12,7 +11,7 @@ SNSampler {
 	// counters, used for naming ins in external GUIs
 	// see addKeyboardIns
 	var additionalIns=1, keyboardIns=1, keyboardEffectsIns=1;
-	var scopeBus, scopeWindow;
+	var <scopeBus, scopeWindow;
 	var <>controllerKeys;
 	var <>doneAction;
 
@@ -29,10 +28,11 @@ SNSampler {
 			bufLength,
 			server,
 			touchOSC,
-		).init(ins);
+			ins
+		).init;
 	}
 
-	init { |ins|
+	init {
 		var insSpec = \audioin.asSpec;
 
 		if (all.includesKey(name)) {
@@ -53,15 +53,16 @@ SNSampler {
 		this.prSetUpControllers;
 		server.waitForBoot {
 			insBuffer = Buffer.alloc(server, 1024, numBuffers);
+			recInsBuffer = Buffer.alloc(server, 1024, numBuffers);
 			buffers = Buffer.allocConsecutive(numBuffers, server, bufLength * server.sampleRate, completionMessage: { |b, i|
 				bufnums[i] = b.bufnum;
 			});
 			server.sync;
 			// insScopeSynth = Synth(\scopeIns, [\inBus, inBusses, \bufnum, insBuffer.bufnum]);
-			SNSamplerGui(this).front;
 			recorder = NodeProxy.audio(server, 1).pause;
-			// scopeBus = Bus.audio(server, inBusses.size);
-			//
+			scopeBus = Bus.audio(server, inBusses.size);
+			SNSamplerGui(this).front;
+
 			// this.scope;
 		}
 	}
@@ -96,7 +97,6 @@ SNSampler {
 	scope {
 		if (scopeWindow.isNil or: { scopeWindow.window.isClosed }) {
 			{
-				// scopeWindow = Stethoscope(server, numChannels, );
 				scopeWindow = Stethoscope(server, ins.size, scopeBus.index);
 				Stethoscope.ugenScopes.add(scopeWindow);
 				scopeWindow.window.onClose_({
