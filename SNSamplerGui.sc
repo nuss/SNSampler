@@ -56,6 +56,10 @@ SNSamplerGui {
 		);
 		window.layout.margins = [2, 2, 2, 2];
 		[insScope, recordInsScope].do(_.start);
+		CmdPeriod.doOnce({
+			window.close;
+			[sampler.insBuffer, sampler.recInsBuffer].do(_.free);
+		})
 	}
 
 	front { window.front }
