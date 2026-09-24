@@ -112,7 +112,7 @@ SNSamplePlayer : AbstractSNSampler {
 			bufLoaderPrefix = "";
 		};
 
-		env = (sampler: this.name -> (
+		env.put(\sampler, this.name -> (
 			player: this,
 			prefix: prefix,
 			osc: this.touchOSC,
@@ -178,43 +178,40 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ \ResetSpecs).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \ResetSpecs).asSymbol, 'reset specs', { |cv|
 			var name, n;
-			Environment.push(SNSamplePlayer.env);
 			/*defer {
 				var name = ('%' ++ 'Dur').asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[0.1, 0.1]);
 				CVCenter.at(name).value_(0.1!CVCenter.at(name).size);
 			};*/
 			defer {
+				Environment.push(SNSamplePlayer.env);
 				name = ("%End".format(~sampler.value.name)).asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[0, 1, \lin, 0, 1]);
+
 				CVCenter.at(name).value_(1.0!CVCenter.at(name).size);
-			};
-			defer {
 				name = ("%Rate".format(~sampler.value.name)).asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[-2, 2, \lin, 0, 1]);
 				CVCenter.at(name).value_(1.0!CVCenter.at(name).size);
-			};
-			defer {
+
 				name = ("%Start".format(~sampler.value.name)).asSymbol;
 				CVCenter.cvWidgets[name].setSpec;
 				CVCenter.at(name).value_(0.0!CVCenter.at(name).size);
-			};
-			defer {
+
 				name = ("%Curve".format(~sampler.value.name)).asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[-4, 4]);
 				CVCenter.at(name).value_(-4!CVCenter.at(name).size);
-			};
-			['Atk', 'Rel'].do { |name|
-				defer {
-					n = ("% name".format(~sampler.value.name)).asSymbol;
+
+				['Atk', 'Rel'].do { |name|
+					n = ("%%".format(~sampler.value.name, name)).asSymbol;
 					CVCenter.cvWidgets[n].setSpec(#[0.02, 3, \exp]);
 					CVCenter.at(n).value_(0.02!CVCenter.at(n).size);
 				};
-			};
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/looper_reset_specs".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop
+
+				if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
+					~sampler.value.osc.sendMsg("%/looper_reset_specs".format(~sampler.value.prefix), cv.input)
+				};
+				Environment.pop
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \ResetSpecs).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_reset_specs".format(prefix)).setOscInputConstraints(Point(0, 1));
 
@@ -505,45 +502,66 @@ SNSamplePlayer : AbstractSNSampler {
 			},
 			\ndef, {
 				CVCenter.use((name ++ \Rtrig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
-				CVCenter.addActionAt((name ++ \Rtrig).asSymbol, 'set rate trigger',
-					"{ |cv| Ndef('%').set(\\rtrigs, cv.value) }".format(looperName);
-				);
+				CVCenter.addActionAt((name ++ \Rtrig).asSymbol, 'set rate trigger', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\rtrigs, cv.value);
+					Environment.pop
+				});
 				CVCenter.use((name ++ \Rthresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
-				CVCenter.addActionAt((name ++ \Rthresh).asSymbol, 'set rate threshhold',
-					"{ |cv| Ndef('%').set(\\rthreshs, cv.value) }".format(looperName)
-				);
+				CVCenter.addActionAt((name ++ \Rthresh).asSymbol, 'set rate threshhold', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\rthreshs, cv.value);
+					Environment.pop
+				});
 				CVCenter.use((name ++ \Strig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
-				CVCenter.addActionAt((name ++ \Strig).asSymbol, 'set start trigger',
-					"{ |cv| Ndef('%').set(\\strigs, cv.value) }".format(looperName)
-				);
+				CVCenter.addActionAt((name ++ \Strig).asSymbol, 'set start trigger', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\strigs, cv.value);
+					Environment.pop
+				});
 				CVCenter.use((name ++ \Sthresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
-				CVCenter.addActionAt((name ++ \Sthresh).asSymbol, 'set start treshhold',
-					"{ |cv| Ndef('%').set(\\sthreshs, cv.value) }".format(looperName)
-				);
+				CVCenter.addActionAt((name ++ \Sthresh).asSymbol, 'set start treshhold', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\sthreshs, cv.value);
+					Environment.pop
+				});
 				CVCenter.use((name ++ \Etrig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
-				CVCenter.addActionAt((name ++ \Etrig).asSymbol, 'set end trigger',
-					"{ |cv| Ndef('%').set(\\etrigs, cv.value) }".format(looperName);
-				);
+				CVCenter.addActionAt((name ++ \Etrig).asSymbol, 'set end trigger', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\etrigs, cv.value);
+					Environment.pop
+				});
 				CVCenter.use((name ++ \Ethresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
-				CVCenter.addActionAt((name ++ \Ethresh).asSymbol, 'set end threshhold',
-					"{ |cv| Ndef('%').set(\\ethreshs, cv.value) }".format(looperName);
-				);
-
-				CVCenter.addActionAt((name ++ \Rate).asSymbol, 'set rates',
-					"{ |cv| Ndef('%').set(\\rates, cv.value ) }".format(looperName)
-				);
-				CVCenter.addActionAt((name ++ \Start).asSymbol, 'set starts',
-					"{ |cv| Ndef('%').set(\\starts, cv.value ) }".format(looperName)
-				);
-				CVCenter.addActionAt((name ++ \End).asSymbol, 'set ends',
-					"{ |cv| Ndef('%').set(\\ends, cv.value ) }".format(looperName)
-				);
-				CVCenter.addActionAt((name ++ \GrainAmp).asSymbol, 'set channel amps',
-					"{ |cv| Ndef('%').set(\\grainAmp, cv.value) }".format(looperName)
-				);
-				CVCenter.addActionAt((name ++ \GrainAmpLag).asSymbol, 'set channel amp lags',
-					"{ |cv| Ndef('%').set(\\grainAmpLag, cv.value) }".format(looperName)
-				);
+				CVCenter.addActionAt((name ++ \Ethresh).asSymbol, 'set end threshhold', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\ethreshs, cv.value);
+					Environment.pop
+				});
+				CVCenter.addActionAt((name ++ \Rate).asSymbol, 'set rates', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\rates, cv.value);
+					Environment.pop
+				});
+				CVCenter.addActionAt((name ++ \Start).asSymbol, 'set starts', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\starts, cv.value);
+					Environment.pop
+				});
+				CVCenter.addActionAt((name ++ \End).asSymbol, 'set ends', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\ends, cv.value);
+					Environment.pop
+				});
+				CVCenter.addActionAt((name ++ \GrainAmp).asSymbol, 'set channel amps', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\grainAmp, cv.value);
+					Environment.pop
+				});
+				CVCenter.addActionAt((name ++ \GrainAmpLag).asSymbol, 'set channel amp lags', { |cv|
+					Environment.push(SNSamplePlayer.env);
+					Ndef(~sampler.value.looperName).set(\grainAmpLag, cv.value);
+					Environment.pop
+				});
 
 				def = {
 					var trigs, rates, starts, ends, out,
