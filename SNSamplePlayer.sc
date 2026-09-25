@@ -125,53 +125,45 @@ SNSamplePlayer : AbstractSNSampler {
 		// basic controls: start stop etc.
 		CVCenter.use((name ++ \PauseResume).asSymbol, \false.asSpec, tab: (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \PauseResume).asSymbol, 'looper pause/resume', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			if (cv.input.asBoolean) { ~sampler.value.player.resume.play } { ~sampler.value.player.pause };
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/looper_pause_resume".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop
+			if (cv.input.asBoolean) { SNSamplePlayer.env.sampler.value.player.resume.play } { SNSamplePlayer.env.sampler.value.player.pause };
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_pause_resume".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \PauseResume).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_pause_resume".format(prefix)).setOscInputConstraints(Point(0, 1));
 
 		CVCenter.use((name ++ \Debug).asSymbol, \false.asSpec, tab: (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \Debug).asSymbol, 'debug start/stop', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			~sampler.value.player.debug_(cv.input.asBoolean);
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/looper_debug".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop
+			SNSamplePlayer.env.sampler.value.player.debug_(cv.input.asBoolean);
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_debug".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \Debug).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_debug".format(prefix)).setOscInputConstraints(Point(0, 1));
 
 		CVCenter.use((name ++ \FreeNodes).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \FreeNodes).asSymbol, 'free hanging nodes', { |cv|
-			Environment.push(SNSamplePlayer.env);
 		    if (cv.value.asBoolean) {
-				~sampler.value.player.freeHangingNodes;
+				SNSamplePlayer.env.sampler.value.player.freeHangingNodes;
 		    };
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/free_hanging_nodes".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop;
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("%/free_hanging_nodes".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \FreeNodes).asSymbol].oscConnect(touchOSC.ip, nil, "%/free_hanging_nodes".format(prefix)).setOscInputConstraints(Point(0, 1));
 
 		CVCenter.use((name ++ \ReinitGrains).asSymbol, \false.asSpec, (name ++ \Controls).asSymbol);
 		CVCenter.addActionAt((name ++ \ReinitGrains).asSymbol, 'reinit grains', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			CVCenter.widgetsAtTab(~sampler.value.looperName).do { |w|
+			CVCenter.widgetsAtTab(SNSamplePlayer.env.sampler.value.looperName).do { |w|
 				try {
 					CVCenter.cvWidgets[w].unsplit;
         			CVCenter.cvWidgets[w].split;
     			}
 			};
-			~sampler.value.player.initDef;
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/looper_reinit_grains".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop
+			SNSamplePlayer.env.sampler.value.player.initDef;
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_reinit_grains".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \ReinitGrains).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_reinit_grains".format(prefix)).setOscInputConstraints(Point(0, 1));
 
@@ -184,33 +176,31 @@ SNSamplePlayer : AbstractSNSampler {
 				CVCenter.at(name).value_(0.1!CVCenter.at(name).size);
 			};*/
 			defer {
-				Environment.push(SNSamplePlayer.env);
-				name = ("%End".format(~sampler.value.name)).asSymbol;
+				name = ("%End".format(SNSamplePlayer.env.sampler.value.name)).asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[0, 1, \lin, 0, 1]);
 
 				CVCenter.at(name).value_(1.0!CVCenter.at(name).size);
-				name = ("%Rate".format(~sampler.value.name)).asSymbol;
+				name = ("%Rate".format(SNSamplePlayer.env.sampler.value.name)).asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[-2, 2, \lin, 0, 1]);
 				CVCenter.at(name).value_(1.0!CVCenter.at(name).size);
 
-				name = ("%Start".format(~sampler.value.name)).asSymbol;
+				name = ("%Start".format(SNSamplePlayer.env.sampler.value.name)).asSymbol;
 				CVCenter.cvWidgets[name].setSpec;
 				CVCenter.at(name).value_(0.0!CVCenter.at(name).size);
 
-				name = ("%Curve".format(~sampler.value.name)).asSymbol;
+				name = ("%Curve".format(SNSamplePlayer.env.sampler.value.name)).asSymbol;
 				CVCenter.cvWidgets[name].setSpec(#[-4, 4]);
 				CVCenter.at(name).value_(-4!CVCenter.at(name).size);
 
 				['Atk', 'Rel'].do { |name|
-					n = ("%%".format(~sampler.value.name, name)).asSymbol;
+					n = ("%%".format(SNSamplePlayer.env.sampler.value.name, name)).asSymbol;
 					CVCenter.cvWidgets[n].setSpec(#[0.02, 3, \exp]);
 					CVCenter.at(n).value_(0.02!CVCenter.at(n).size);
 				};
 
-				if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-					~sampler.value.osc.sendMsg("%/looper_reset_specs".format(~sampler.value.prefix), cv.input)
-				};
-				Environment.pop
+				if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+					SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_reset_specs".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+				}
 			}
 		});
 		CVCenter.cvWidgets[(name ++ \ResetSpecs).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_reset_specs".format(prefix)).setOscInputConstraints(Point(0, 1));
@@ -218,29 +208,25 @@ SNSamplePlayer : AbstractSNSampler {
 		// moved from TouchOSC "sampler controls" to "controls1" - global out amplitudes
 		CVCenter.use((name ++ \ChanAmps).asSymbol, \amp ! numOutChannels, 1.0, (name ++ \Out).asSymbol);
 		CVCenter.addActionAt((name ++ \ChanAmps).asSymbol, 'set out channel amps', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			~sampler.value.player.out.set(("%ChanAmps".format(~sampler.value.name)).asSymbol, cv.value);
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.player.numOutChannels.do { |i|
-					~sampler.value.osc.sendMsg("/controls1/multislider1/" ++ (i+1), cv.input[i])
+			SNSamplePlayer.env.sampler.value.player.out.set(("%ChanAmps".format(SNSamplePlayer.env.sampler.value.name)).asSymbol, cv.value);
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.player.numOutChannels.do { |i|
+					SNSamplePlayer.env.sampler.value.osc.sendMsg("/controls1/multislider1/" ++ (i+1), cv.input[i])
 				};
-				~sampler.value.osc.sendMsg("/controls1/multislider1/label", "out channel amplitudes")
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("/controls1/multislider1/label", "out channel amplitudes")
 			};
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg('/controls1/multislider1/label', 'looper out amplitudes')
-			};
-			Environment.pop
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg('/controls1/multislider1/label', 'looper out amplitudes')
+			}
 		});
 
 		// TouchOSC fader expected on panel 2
 		CVCenter.use((name ++ \Amp).asSymbol, \amp, 1.0, (name ++ \Out).asSymbol);
 		CVCenter.addActionAt((name ++ \Amp).asSymbol, 'looper out volume', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			~sampler.value.player.out.set(("%Amp".format(~sampler.value.name)).asSymbol, cv.value);
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/looper_out_volume".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop
+			SNSamplePlayer.env.sampler.value.player.out.set(("%Amp".format(SNSamplePlayer.env.sampler.value.name)).asSymbol, cv.value);
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_out_volume".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \Amp).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_out_volume".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
@@ -248,12 +234,10 @@ SNSamplePlayer : AbstractSNSampler {
 		// TouchOSC fader expected on panel 2
 		CVCenter.use((name ++ \AmpWet).asSymbol, nil, 1.0, (name ++ \Out).asSymbol);
 		CVCenter.addActionAt((name ++ \AmpWet), 'amp dry/wet', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			~sampler.value.player.out.set(("wet %".format(~sampler.value.volumeControl)).asSymbol, cv.value);
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/looper_out_volume_dry_wet".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop
+			SNSamplePlayer.env.sampler.value.player.out.set(("wet %".format(SNSamplePlayer.env.sampler.value.volumeControl)).asSymbol, cv.value);
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_out_volume_dry_wet".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \AmpWet).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_out_volume_dry_wet".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
@@ -262,12 +246,10 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ \Center).asSymbol, \pan, tab: (name ++ \Out).asSymbol);
 		// update rotary on panel 2 AND slider on panel 1
 		CVCenter.addActionAt((name ++ \Center).asSymbol, 'set center', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			~sampler.value.player.out.set('center', cv.value);
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/looper_center_rotary".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop
+			SNSamplePlayer.env.sampler.value.player.out.set('center', cv.value);
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_center_rotary".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \Center).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_center_rotary".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
@@ -276,12 +258,10 @@ SNSamplePlayer : AbstractSNSampler {
 		CVCenter.use((name ++ \Spread).asSymbol, nil, tab: (name ++ \Out).asSymbol);
 		// update rotary on panel 2 AND slider on panel 1
 		CVCenter.addActionAt((name ++ \Spread).asSymbol, 'set spread', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			~sampler.value.player.out.set(("%Spread".format(~sampler.value.name)).asSymbol, cv.value);
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.osc.sendMsg("%/looper_spread_rotary".format(~sampler.value.prefix), cv.input)
-			};
-			Environment.pop;
+			SNSamplePlayer.env.sampler.value.player.out.set(("%Spread".format(SNSamplePlayer.env.sampler.value.name)).asSymbol, cv.value);
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_spread_rotary".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+			}
 		});
 		CVCenter.cvWidgets[(name ++ \Spread).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_spread_rotary".format(prefix))
 		.setOscInputConstraints(Point(0, 1));
@@ -291,24 +271,20 @@ SNSamplePlayer : AbstractSNSampler {
 			"numOutChannels: %".format(numOutChannels).postln;
 			CVCenter.use((name ++ \Width).asSymbol, [1, numOutChannels], 2, (name ++ \Out).asSymbol);
 			CVCenter.addActionAt((name ++ \Width).asSymbol, 'set width', { |cv|
-				Environment.push(SNSamplePlayer.env);
-				~sampler.value.player.out.set(("%Width".format(~sampler.value.name)).asSymbol, cv.value);
-				if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-					~sampler.value.osc.sendMsg("%/looper_width_rotary".format(~sampler.value.prefix), cv.input)
-				};
-				Environment.pop
+				SNSamplePlayer.env.sampler.value.player.out.set(("%Width".format(SNSamplePlayer.env.sampler.value.name)).asSymbol, cv.value);
+				if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+					SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_width_rotary".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+				}
 			});
 			CVCenter.cvWidgets[(name ++ \Width).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_width_rotary".format(prefix))
 			.setOscInputConstraints(Point(0, 1));
 
 			CVCenter.use((name ++ \Orientation).asSymbol, nil, 2, (name ++ \Out).asSymbol);
 			CVCenter.addActionAt((name ++ \Orientation).asSymbol, 'set orientation', { |cv|
-				Environment.push(SNSamplePlayer.env);
-				~sampler.value.player.out.set(("%Orientation".format(~sampler.value.name)).asSymbol, cv.value);
-				if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-					~sampler.value.osc.sendMsg("%/looper_orientation_rotary".format(~sampler.value.prefix), cv.input)
-				};
-				Environment.pop
+				SNSamplePlayer.env.sampler.value.player.out.set(("%Orientation".format(SNSamplePlayer.env.sampler.value.name)).asSymbol, cv.value);
+				if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+					SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_orientation_rotary".format(SNSamplePlayer.env.sampler.value.prefix), cv.input)
+				}
 			});
 			CVCenter.cvWidgets[(name ++ \Orientation).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_orientation_rotary".format(prefix))
 			.setOscInputConstraints(Point(0, 1));
@@ -321,28 +297,24 @@ SNSamplePlayer : AbstractSNSampler {
 				env.put((\n ++ n).asSymbol, n);
 				CVCenter.use((name ++ "SelectBuf" ++ (n+1)).asSymbol, tab: (name ++ \ExtBufs).asSymbol, svItems: svItems.collect(_.asSymbol));
 				CVCenter.addActionAt((name ++ "SelectBuf" ++ (n+1)).asSymbol, 'select buf', "{ |sv|
-					Environment.push(SNSamplePlayer.env);
-					if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-						~sampler.value.osc.sendMsg(\"%/ext_buf%_label\", sv.getIndex(sv.item).asString ++ ': ' ++ sv.item);
-						~sampler.value.osc.sendMsg(\"%/select_ext_buffer%\", sv.input);
-					};
-					Environment.pop
+					if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+						SNSamplePlayer.env.sampler.value.osc.sendMsg(\"%/ext_buf%_label\", sv.getIndex(sv.item).asString ++ ': ' ++ sv.item);
+						SNSamplePlayer.env.sampler.value.osc.sendMsg(\"%/select_ext_buffer%\", sv.input);
+					}
 				}".format(bufLoaderPrefix, n+1, bufLoaderPrefix, n+1));
 				CVCenter.cvWidgets[(name ++ "SelectBuf" ++ (n+1)).asSymbol].oscConnect(touchOSC.ip, nil, "%/select_ext_buffer%".format(bufLoaderPrefix, n+1))
 				.setOscInputConstraints(Point(0, 1));
 				CVCenter.use((name ++ \SwitchBuf ++ (n+1)).asSymbol, \false, tab: (name ++ \ExtBufs).asSymbol);
 				CVCenter.addActionAt((name ++ \SwitchBuf ++ (n+1)).asSymbol, 'switch buffer', "{ |cv|
-					Environment.push(SNSamplePlayer.env);
 					if (cv.input.booleanValue) {
-						~sampler.value.player.setBuffer(%, ~sampler.value.player.bufferLoader.buffers[CVCenter.at(('%' ++ 'SelectBuf' ++ %).asSymbol).value]);
+						SNSamplePlayer.env.sampler.value.player.setBuffer(%, SNSamplePlayer.env.sampler.value.player.bufferLoader.buffers[CVCenter.at(('%' ++ 'SelectBuf' ++ %).asSymbol).value]);
 					} {
 						\"resetting buffer\".postln;
-						~sampler.value.player.resetBuffer(%);
+						SNSamplePlayer.env.sampler.value.player.resetBuffer(%);
 					};
-					if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr}) {
-						~sampler.value.osc.sendMsg(\"%/switch_ext_buf%\", cv.input)
-					};
-					Environment.pop
+					if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr}) {
+						SNSamplePlayer.env.sampler.value.osc.sendMsg(\"%/switch_ext_buf%\", cv.input)
+					}
 				}".format(n, name, n+1, n, bufLoaderPrefix, n+1));
 				CVCenter.cvWidgets[(name ++ \SwitchBuf ++ (n+1)).asSymbol].oscConnect(touchOSC.ip, nil, "%/switch_ext_buf%".format(bufLoaderPrefix, n+1))
 				.setOscInputConstraints(Point(0, 1));
@@ -357,18 +329,12 @@ SNSamplePlayer : AbstractSNSampler {
 		// directly connected to OSC interface as it likely doesn't make sense to control them through VideOSC
 		CVCenter.use((name ++ "GrainAmp").asSymbol, \amp ! numBuffers, tab: looperName);
 		CVCenter.addActionAt((name ++ \GrainAmp).asSymbol, 'set buffer channel amps', { |cv|
-			Environment.push(SNSamplePlayer.env);
-			if (~sampler.value.osc.notNil and: { ~sampler.value.osc.class === NetAddr }) {
-				~sampler.value.player.numBuffers.do { |i|
-					~sampler.value.osc.sendMsg("%/looper_chan_amps/%".format(~sampler.value.prefix, i+1), cv.input[i])
+			if (SNSamplePlayer.env.sampler.value.osc.notNil and: { SNSamplePlayer.env.sampler.value.osc.class === NetAddr }) {
+				SNSamplePlayer.env.sampler.value.player.numBuffers.do { |i|
+					SNSamplePlayer.env.sampler.value.osc.sendMsg("%/looper_chan_amps/%".format(SNSamplePlayer.env.sampler.value.prefix, i+1), cv.input[i])
 				}
-			};
-			Environment.pop
+			}
 		});
-		// numOutChannels.do { |i|
-		// 	CVCenter.cvWidgets[(name ++ \ChanAmps).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_chan_amps/%".format(prefix, i+1), slot: i)
-		// 	.setOscInputConstraints(Point(0, 1), i);
-		// };
 		numBuffers.do { |i|
 			CVCenter.cvWidgets[(name ++ \GrainAmp).asSymbol].oscConnect(touchOSC.ip, nil, "%/looper_chan_amps/%".format(prefix, i+1), slot: i)/*
 			.setOscInputConstraints(Point(0, 1), i)*/;
@@ -503,64 +469,42 @@ SNSamplePlayer : AbstractSNSampler {
 			\ndef, {
 				CVCenter.use((name ++ \Rtrig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Rtrig).asSymbol, 'set rate trigger', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\rtrigs, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\rtrigs, cv.value)
 				});
 				CVCenter.use((name ++ \Rthresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Rthresh).asSymbol, 'set rate threshhold', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\rthreshs, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\rthreshs, cv.value)
 				});
 				CVCenter.use((name ++ \Strig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Strig).asSymbol, 'set start trigger', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\strigs, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\strigs, cv.value)
 				});
 				CVCenter.use((name ++ \Sthresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Sthresh).asSymbol, 'set start treshhold', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\sthreshs, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\sthreshs, cv.value)
 				});
 				CVCenter.use((name ++ \Etrig).asSymbol, #[0.0002, 1.1, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Etrig).asSymbol, 'set end trigger', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\etrigs, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\etrigs, cv.value)
 				});
 				CVCenter.use((name ++ \Ethresh).asSymbol,#[0.0001, 1.0, \exp] ! numBuffers, tab: looperName);
 				CVCenter.addActionAt((name ++ \Ethresh).asSymbol, 'set end threshhold', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\ethreshs, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\ethreshs, cv.value)
 				});
 				CVCenter.addActionAt((name ++ \Rate).asSymbol, 'set rates', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\rates, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\rates, cv.value)
 				});
 				CVCenter.addActionAt((name ++ \Start).asSymbol, 'set starts', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\starts, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\starts, cv.value)
 				});
 				CVCenter.addActionAt((name ++ \End).asSymbol, 'set ends', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\ends, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\ends, cv.value)
 				});
 				CVCenter.addActionAt((name ++ \GrainAmp).asSymbol, 'set channel amps', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\grainAmp, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\grainAmp, cv.value)
 				});
 				CVCenter.addActionAt((name ++ \GrainAmpLag).asSymbol, 'set channel amp lags', { |cv|
-					Environment.push(SNSamplePlayer.env);
-					Ndef(~sampler.value.looperName).set(\grainAmpLag, cv.value);
-					Environment.pop
+					Ndef(SNSamplePlayer.env.sampler.value.looperName).set(\grainAmpLag, cv.value)
 				});
 
 				def = {
